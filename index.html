@@ -3,95 +3,106 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Shawzen Online — مواجهة الطلقات والأدوات أونلاين</title>
+<title>Shawzen Online — ساحة المواجهة والأنيميشن</title>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
   :root {
-    --bg: #0c0f16;
-    --panel: #151a26;
-    --panel-2: #1c2333;
-    --accent: #e63946;
+    --bg: #07090f;
+    --panel: rgba(17, 23, 38, 0.92);
+    --panel-2: #161e31;
+    --accent: #ff2e4c;
     --accent-2: #ffb703;
-    --ok: #2ec4b6;
-    --text: #f1f5f9;
+    --ok: #00e5c3;
+    --text: #f8fafc;
     --muted: #94a3b8;
-    --border: rgba(255,255,255,0.1);
+    --border: rgba(255,255,255,0.12);
   }
   * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
   body {
     margin: 0;
-    background: radial-gradient(circle at top, #1b2234 0%, var(--bg) 70%);
+    background: radial-gradient(circle at 50% 0%, #1c2742 0%, var(--bg) 72%);
     color: var(--text);
     min-height: 100vh;
-    padding: 14px;
+    padding: 12px;
   }
-  .container { max-width: 980px; margin: 0 auto; }
+  .container { max-width: 1120px; margin: 0 auto; }
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 16px;
-    margin-bottom: 14px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 14px 35px rgba(0,0,0,0.45);
   }
-  h1, h2, h3 { margin: 0 0 10px; }
+  h1, h2, h3 { margin: 0 0 8px; }
   .header {
     display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
-    gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 14px;
+    gap: 10px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px;
   }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 5px 10px; border-radius: 999px; font-size: 13px;
+    padding: 5px 11px; border-radius: 999px; font-size: 13px;
     background: var(--panel-2); border: 1px solid var(--border);
   }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; }
-  .dot.ok { background: #22c55e; }
-  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+  .dot.ok { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
   input, select {
-    width: 100%; padding: 10px 12px; border-radius: 10px;
+    width: 100%; padding: 9px 12px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
     margin-bottom: 10px; font-size: 14px;
   }
   button {
     cursor: pointer; border: none; border-radius: 10px; padding: 10px 14px;
-    font-weight: 700; font-size: 14px; transition: transform .12s ease, opacity .15s ease;
-    background: var(--accent); color: #fff;
+    font-weight: 700; font-size: 14px; transition: transform .12s ease, opacity .15s ease, box-shadow .15s ease;
+    background: linear-gradient(135deg, #ff2e4c, #c9184a); color: #fff;
   }
-  button:hover:not(:disabled) { transform: translateY(-1px); }
+  button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(255,46,76,0.35); }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
-  button.gold { background: var(--accent-2); color: #111; }
-  button.teal { background: var(--ok); color: #081214; }
-  .players-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px;
+  button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
+  button.gold { background: linear-gradient(135deg, #ffd166, #f77f00); color: #111; }
+  button.teal { background: linear-gradient(135deg, #00f5d4, #00bbf9); color: #071318; }
+  .arena-wrap {
+    position: relative; width: 100%; border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(255,183,3,0.25); background: #06080e;
   }
-  .player-box {
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px;
-    position: relative;
+  canvas#arenaCanvas {
+    display: block; width: 100%; height: auto; aspect-ratio: 16 / 8;
   }
-  .player-box.active-turn { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(255,183,3,0.25); }
-  .player-box.dead { opacity: .45; }
+  .hud-strip {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: 8px; margin-bottom: 10px;
+  }
+  .players-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 9px; margin-top: 10px;
+  }
+  .p-card {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px; transition: border-color .2s, transform .2s;
+  }
+  .p-card.active { border-color: var(--accent-2); box-shadow: 0 0 14px rgba(255,183,3,0.22); transform: translateY(-2px); }
+  .p-card.dead { opacity: .42; }
   .items-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .item-btn {
-    background: #242d42; border: 1px solid var(--border); color: var(--text);
-    padding: 8px 10px; border-radius: 10px; font-size: 13px;
+    background: #1f2940; border: 1px solid rgba(255,255,255,0.16); color: var(--text);
+    padding: 8px 11px; border-radius: 10px; font-size: 13px;
   }
   .log-box {
-    background: #0b0e14; border: 1px solid var(--border); border-radius: 10px;
-    padding: 10px 12px; font-size: 14px; min-height: 44px; color: #fde68a;
+    background: #080b12; border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 12px; font-size: 14px; color: #fde68a; margin-top: 10px;
   }
   .hint-banner {
-    background: rgba(46, 196, 182, 0.14); border: 1px solid var(--ok); color: #99f6e4;
+    background: rgba(0, 229, 195, 0.14); border: 1px solid var(--ok); color: #99f6e4;
     padding: 10px 12px; border-radius: 10px; margin-bottom: 10px; display: none;
   }
   .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.72);
-    display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: none; align-items: center; justify-content: center; padding: 16px; z-index: 60;
   }
   .modal-card {
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
-    padding: 18px; max-width: 420px; width: 100%;
+    padding: 18px; max-width: 430px; width: 100%;
   }
   .row-flex { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 </style>
@@ -101,8 +112,8 @@
   <div class="card">
     <div class="header">
       <div>
-        <h1>🎯 Shawzen Online</h1>
-        <small style="color:var(--muted)">وضع اللعب الجماعي المتزامن عبر الخادم</small>
+        <h1>🔥 Shawzen Online</h1>
+        <small style="color:var(--muted)">مواجهة الأسلحة والمظاهر والأنيميشن أونلاين</small>
       </div>
       <div class="row-flex">
         <div id="connBadge" class="badge"><span id="connDot" class="dot"></span><span id="connText">جاري الاتصال بالسيرفر...</span></div>
@@ -112,23 +123,23 @@
 
     <div class="row-flex">
       <div style="flex:1; min-width:240px">
-        <label for="serverUrlInput">رابط السيرفر المباشر (Socket.io Server URL)</label>
+        <label for="serverUrlInput">رابط السيرفر المباشر</label>
         <input id="serverUrlInput" type="text" value="https://shawzen-online-server.onrender.com" />
       </div>
-      <button class="secondary" onclick="applyServerUrl()" style="margin-top:12px">إعادة الاتصال بالسيرفر</button>
+      <button class="secondary" onclick="applyServerUrl()" style="margin-top:12px">إعادة الاتصال</button>
     </div>
   </div>
 
   <div id="hintBanner" class="hint-banner"></div>
 
-  <!-- شاشة إنشاء أو الانضمام لغرفة -->
+  <!-- اللوبي -->
   <div id="lobbySection" class="grid-2">
     <div class="card">
       <h2>إنشاء غرفة جديدة</h2>
       <label for="createName">اسمك</label>
       <input id="createName" type="text" value="علي" maxlength="14" />
 
-      <label for="maxPlayersSelect">عدد المقاعد الكلي</label>
+      <label for="maxPlayersSelect">عدد المقاعد</label>
       <select id="maxPlayersSelect">
         <option value="2">2 لاعبين</option>
         <option value="3">3 لاعبين</option>
@@ -136,30 +147,30 @@
         <option value="6">6 لاعبين</option>
       </select>
 
-      <label for="timerSelect">مؤقت الدور (بالثواني)</label>
+      <label for="timerSelect">مؤقت الدور</label>
       <select id="timerSelect">
         <option value="30">30 ثانية</option>
         <option value="45" selected>45 ثانية</option>
         <option value="60">60 ثانية</option>
       </select>
 
-      <label for="createWeapon">السلاح المفضل</label>
+      <label for="createWeapon">السلاح</label>
       <select id="createWeapon">
-        <option value="shotgun">شوزن</option>
-        <option value="pistol">مسدس</option>
-        <option value="ak">رشاش AK</option>
-        <option value="bazooka">بازوكا</option>
-        <option value="cannon">مدفع</option>
+        <option value="shotgun">🔫 شوزن (Shotgun)</option>
+        <option value="pistol">🔹 مسدس (Pistol)</option>
+        <option value="ak">⚡ رشاش AK</option>
+        <option value="bazooka">🚀 بازوكا (Bazooka)</option>
+        <option value="cannon">💣 مدفع (Cannon)</option>
       </select>
 
       <label for="createSkin">المظهر</label>
       <select id="createSkin">
-        <option value="classic">كلاسيكي</option>
-        <option value="gold">ذهبي</option>
-        <option value="neon">نيون</option>
-        <option value="shadow">ظل</option>
-        <option value="sumerian">الحضارة السومرية</option>
-        <option value="egyptian">الحضارة المصرية</option>
+        <option value="sumerian">🏛️ الحضارة السومرية</option>
+        <option value="egyptian">🏺 الحضارة المصرية</option>
+        <option value="gold">👑 ذهبي ملكي</option>
+        <option value="neon">💠 نيون سايبر</option>
+        <option value="shadow">🌑 ظل ليلي</option>
+        <option value="classic">⚔️ كلاسيكي</option>
       </select>
 
       <button onclick="createRoom()">إنشاء غرفة والحصول على الرمز</button>
@@ -168,68 +179,70 @@
     <div class="card">
       <h2>الانضمام إلى غرفة برمز</h2>
       <label for="joinCodeInput">رمز الغرفة</label>
-      <input id="joinCodeInput" type="text" placeholder="مثال: A7K9P" maxlength="6" style="text-transform:uppercase" />
+      <input id="joinCodeInput" type="text" placeholder="مثال: 3EZTB" maxlength="6" style="text-transform:uppercase" />
 
       <label for="joinName">اسمك</label>
       <input id="joinName" type="text" value="صديقي" maxlength="14" />
 
-      <label for="joinWeapon">السلاح المفضل</label>
+      <label for="joinWeapon">السلاح</label>
       <select id="joinWeapon">
-        <option value="shotgun">شوزن</option>
-        <option value="pistol">مسدس</option>
-        <option value="ak">رشاش AK</option>
-        <option value="bazooka">بازوكا</option>
-        <option value="cannon">مدفع</option>
+        <option value="shotgun">🔫 شوزن (Shotgun)</option>
+        <option value="pistol">🔹 مسدس (Pistol)</option>
+        <option value="ak">⚡ رشاش AK</option>
+        <option value="bazooka">🚀 بازوكا (Bazooka)</option>
+        <option value="cannon">💣 مدفع (Cannon)</option>
       </select>
 
       <label for="joinSkin">المظهر</label>
       <select id="joinSkin">
-        <option value="classic">كلاسيكي</option>
-        <option value="gold">ذهبي</option>
-        <option value="neon">نيون</option>
-        <option value="shadow">ظل</option>
-        <option value="sumerian">الحضارة السومرية</option>
-        <option value="egyptian">الحضارة المصرية</option>
+        <option value="sumerian">🏛️ الحضارة السومرية</option>
+        <option value="egyptian">🏺 الحضارة المصرية</option>
+        <option value="gold">👑 ذهبي ملكي</option>
+        <option value="neon">💠 نيون سايبر</option>
+        <option value="shadow">🌑 ظل ليلي</option>
+        <option value="classic">⚔️ كلاسيكي</option>
       </select>
 
       <button class="teal" onclick="joinRoom()">دخول الغرفة</button>
     </div>
   </div>
 
-  <!-- غرفة الانتظار والمباراة -->
+  <!-- ساحة اللعب -->
   <div id="gameSection" class="card" style="display:none">
-    <div class="header">
+    <div class="hud-strip">
       <div class="row-flex">
         <span class="badge">الجولة: <strong id="roundNum">1</strong></span>
-        <span class="badge">الطلقات المتبقية: <strong id="shellsLeft">0</strong></span>
-        <span class="badge">الوقت المتبقي: <strong id="timerText">--</strong>s</span>
+        <span class="badge">الطلقات: <strong id="shellsLeft">0</strong></span>
+        <span class="badge">الوقت: <strong id="timerText">--</strong>s</span>
         <span id="sawBadge" class="badge" style="display:none; border-color:#f97316; color:#fdba74">🪚 ضرر مضاعف (2 ❤️)</span>
       </div>
       <div id="hostControls" class="row-flex" style="display:none">
         <label class="row-flex" style="margin:0; cursor:pointer">
           <input id="fillBotsCheck" type="checkbox" checked style="width:auto; margin:0" />
-          <span>إكمال المقاعد بالبوتات</span>
+          <span>إكمال بالبوتات</span>
         </label>
         <button class="gold" onclick="startGame()">بدء المباراة</button>
       </div>
     </div>
 
+    <div class="arena-wrap">
+      <canvas id="arenaCanvas" width="960" height="480"></canvas>
+    </div>
+
     <div id="logBox" class="log-box">بانتظار بدء المباراة...</div>
 
-    <h3 style="margin-top:14px">اللاعبون في الغرفة</h3>
-    <div id="playersGrid" class="players-grid"></div>
-
-    <div id="myControls" style="margin-top:14px; display:none">
+    <div id="myControls" style="margin-top:12px; display:none">
       <h3>دورك الآن — اختر هدفاً لإطلاق النار</h3>
       <div id="targetsBar" class="row-flex" style="margin-bottom:10px"></div>
 
       <h3>أدواتك التكتيكية</h3>
       <div id="myItemsBar" class="items-bar"></div>
     </div>
+
+    <div id="playersGrid" class="players-strip"></div>
   </div>
 </div>
 
-<!-- نافذة اختيار هدف أو سرقة أداة -->
 <div id="actionModal" class="modal-backdrop">
   <div class="modal-card">
     <h3 id="modalTitle">اختر الهدف</h3>
@@ -240,6 +253,7 @@
 
 <script>
   const DEFAULT_SERVER_URL = "https://shawzen-online-server.onrender.com";
+
   const ITEM_LABELS = {
     magnifier: "🔍 عدسة مكبرة",
     saw: "🪚 منشار",
@@ -253,9 +267,38 @@
     pillow: "🛏️ وسادة سرية"
   };
 
+  const WEAPON_LABELS = {
+    shotgun: "شوزن",
+    pistol: "مسدس",
+    ak: "رشاش AK",
+    bazooka: "بازوكا",
+    cannon: "مدفع"
+  };
+
+  const SKIN_THEMES = {
+    sumerian: { name: "السومرية", primary: "#2ec4b6", secondary: "#f4a261", aura: "rgba(46,196,182,0.35)" },
+    egyptian: { name: "المصرية", primary: "#ffd166", secondary: "#118ab2", aura: "rgba(255,209,102,0.35)" },
+    gold:     { name: "ذهبي",     primary: "#fbbf24", secondary: "#b45309", aura: "rgba(251,191,36,0.35)" },
+    neon:     { name: "نيون",     primary: "#38bdf8", secondary: "#e879f9", aura: "rgba(56,189,248,0.38)" },
+    shadow:   { name: "ظل",       primary: "#94a3b8", secondary: "#334155", aura: "rgba(148,163,184,0.25)" },
+    classic:  { name: "كلاسيكي",  primary: "#f87171", secondary: "#991b1b", aura: "rgba(248,113,113,0.3)" }
+  };
+
   let socket = null;
   let roomState = null;
+  let prevStateSnapshot = null;
   let pendingSlotIndex = null;
+
+  // عناصر الأنيميشن والمؤثرات البصرية
+  const canvas = document.getElementById("arenaCanvas");
+  const ctx = canvas.getContext("2d");
+  let projectiles = [];
+  let particles = [];
+  let floatingTexts = [];
+  let muzzleFlashes = [];
+  let recoilMap = {};
+  let shakeTime = 0;
+  let shakeIntensity = 0;
 
   const urlInput = document.getElementById("serverUrlInput");
   const savedUrl = localStorage.getItem("shawzen_server_url") || DEFAULT_SERVER_URL;
@@ -297,8 +340,10 @@
     });
 
     socket.on("room_state", (state) => {
+      detectStateAnimations(prevStateSnapshot, state);
+      prevStateSnapshot = JSON.parse(JSON.stringify(state));
       roomState = state;
-      renderRoom();
+      renderUI();
     });
 
     socket.on("thief_reveal", ({ targetId, targetName, items }) => {
@@ -324,9 +369,350 @@
     });
 
     socket.on("game_over", ({ winnerName }) => {
-      alert(`🏆 انتهت المباراة! الفائز هو: ${winnerName}`);
+      spawnFloatingText(canvas.width / 2, canvas.height * 0.35, `🏆 الفائز: ${winnerName}`, "#ffd166");
+      spawnBurst(canvas.width / 2, canvas.height * 0.45, "#ffd166", 45);
+      setTimeout(() => alert(`🏆 انتهت المباراة! الفائز هو: ${winnerName}`), 350);
     });
   }
+
+  function getPlayerPositions(players) {
+    const count = Math.max(players.length, 1);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height * 0.56;
+    const rx = canvas.width * 0.34;
+    const ry = canvas.height * 0.27;
+    return players.map((p, i) => {
+      const angle = -Math.PI / 2 + (i * Math.PI * 2) / count;
+      return {
+        id: p.id,
+        x: centerX + Math.cos(angle) * rx,
+        y: centerY + Math.sin(angle) * ry,
+        angle
+      };
+    });
+  }
+
+  function detectStateAnimations(oldS, newS) {
+    if (!oldS || !newS || !oldS.players || !newS.players) return;
+    const oldPos = getPlayerPositions(oldS.players);
+    const newPos = getPlayerPositions(newS.players);
+
+    const shooter = oldS.players[oldS.turnIndex];
+    const sPos = shooter ? oldPos.find(pos => pos.id === shooter.id) : null;
+
+    newS.players.forEach((np) => {
+      const op = oldS.players.find(x => x.id === np.id);
+      const tPos = newPos.find(pos => pos.id === np.id);
+      if (!op || !tPos) return;
+
+      const theme = SKIN_THEMES[np.skin] || SKIN_THEMES.classic;
+
+      if (np.hearts < op.hearts) {
+        const diff = op.hearts - np.hearts;
+        if (sPos && sPos.id !== np.id) {
+          spawnProjectile(sPos.x, sPos.y, tPos.x, tPos.y, shooter.weapon, "#ff2e4c");
+          spawnMuzzle(sPos.x, sPos.y, tPos.x, tPos.y, "#ff9f1c");
+          recoilMap[sPos.id] = 12;
+        } else {
+          recoilMap[np.id] = 10;
+        }
+        shakeTime = 16;
+        shakeIntensity = diff > 1 ? 11 : 6;
+        spawnBurst(tPos.x, tPos.y, "#ff2e4c", 18 * diff);
+        spawnFloatingText(tPos.x, tPos.y - 44, `-${diff} ❤️`, "#ff4d6d");
+      } else if (sPos && newS.remainingShells < oldS.remainingShells && sPos.id === np.id) {
+        recoilMap[sPos.id] = 8;
+        spawnMuzzle(sPos.x, sPos.y, tPos.x, tPos.y, "#94a3b8");
+        spawnFloatingText(tPos.x, tPos.y - 44, "طلقة فارغة", "#cbd5e1");
+      }
+
+      if (np.hearts > op.hearts) {
+        spawnBurst(tPos.x, tPos.y, "#22c55e", 16);
+        spawnFloatingText(tPos.x, tPos.y - 44, `+${np.hearts - op.hearts} ❤️`, "#4ade80");
+      }
+
+      if (np.shield && !op.shield) {
+        spawnBurst(tPos.x, tPos.y, "#38bdf8", 16);
+        spawnFloatingText(tPos.x, tPos.y - 44, "🛡️ درع", "#38bdf8");
+      }
+
+      if (np.cuffed && !op.cuffed) {
+        spawnBurst(tPos.x, tPos.y, theme.secondary, 14);
+        spawnFloatingText(tPos.x, tPos.y - 44, "⛓️ مقيّد", "#fbbf24");
+      }
+    });
+  }
+
+  function spawnProjectile(x1, y1, x2, y2, weapon, color) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.hypot(dx, dy) || 1;
+    const speed = weapon === "ak" ? 26 : weapon === "bazooka" || weapon === "cannon" ? 15 : 21;
+    projectiles.push({
+      x: x1, y: y1,
+      vx: (dx / dist) * speed,
+      vy: (dy / dist) * speed,
+      targetX: x2, targetY: y2,
+      weapon, color,
+      life: Math.max(6, Math.ceil(dist / speed))
+    });
+  }
+
+  function spawnMuzzle(x1, y1, x2, y2, color) {
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    muzzleFlashes.push({
+      x: x1 + Math.cos(angle) * 34,
+      y: y1 + Math.sin(angle) * 34,
+      angle, color, life: 7
+    });
+  }
+
+  function spawnBurst(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.5 + Math.random() * 5.5;
+      particles.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        color,
+        size: 2.5 + Math.random() * 3.5,
+        life: 24 + Math.floor(Math.random() * 14)
+      });
+    }
+  }
+
+  function spawnFloatingText(x, y, text, color) {
+    floatingTexts.push({ x, y, text, color, vy: -1.1, life: 48 });
+  }
+
+  function drawWeapon(x, y, aimAngle, weapon, primaryColor) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(aimAngle);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2;
+
+    if (weapon === "pistol") {
+      ctx.fillRect(10, -4, 16, 7);
+      ctx.fillRect(10, 2, 6, 8);
+    } else if (weapon === "ak") {
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(8, -5, 28, 8);
+      ctx.fillStyle = "#cbd5e1";
+      ctx.fillRect(26, -3, 12, 4);
+      ctx.fillRect(18, 2, 5, 10);
+    } else if (weapon === "bazooka") {
+      ctx.fillStyle = "#475569";
+      ctx.fillRect(4, -7, 36, 14);
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(34, -8, 7, 16);
+    } else if (weapon === "cannon") {
+      ctx.fillStyle = "#334155";
+      ctx.beginPath();
+      ctx.arc(18, 0, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(18, -6, 20, 12);
+    } else {
+      // shotgun
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillRect(8, -4.5, 30, 8);
+      ctx.fillStyle = "#b45309";
+      ctx.fillRect(6, -3.5, 11, 6.5);
+    }
+    ctx.restore();
+  }
+
+  function drawPlayerCharacter(p, pos, isTurn, now) {
+    const theme = SKIN_THEMES[p.skin] || SKIN_THEMES.classic;
+    const dead = p.hearts <= 0;
+    const recoil = recoilMap[p.id] || 0;
+    const bob = dead ? 0 : Math.sin(now * 0.005 + pos.angle) * 3.5;
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y + bob);
+    if (dead) ctx.globalAlpha = 0.35;
+
+    // هالة اللاعب النشط
+    if (isTurn && !dead) {
+      const pulse = 36 + Math.sin(now * 0.008) * 5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = "#ffb703";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // قاعدة المظهر البصري
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+    ctx.fillStyle = theme.aura;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = theme.primary;
+    ctx.stroke();
+
+    // تفاصيل مميزة لبعض المظاهر
+    if (p.skin === "sumerian") {
+      ctx.strokeStyle = theme.secondary;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(-14, -14, 28, 28);
+    } else if (p.skin === "egyptian") {
+      ctx.beginPath();
+      ctx.moveTo(0, -24);
+      ctx.lineTo(18, 12);
+      ctx.lineTo(-18, 12);
+      ctx.closePath();
+      ctx.strokeStyle = theme.secondary;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else if (p.skin === "gold") {
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.moveTo(-12, -16);
+      ctx.lineTo(-6, -25);
+      ctx.lineTo(0, -18);
+      ctx.lineTo(6, -25);
+      ctx.lineTo(12, -16);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // جسم الشخصية
+    ctx.beginPath();
+    ctx.arc(0, 0, 17, 0, Math.PI * 2);
+    ctx.fillStyle = theme.primary;
+    ctx.fill();
+
+    // درع الطاقة
+    if (p.shield && !dead) {
+      ctx.beginPath();
+      ctx.arc(0, 0, 32, 0, Math.PI * 2);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // السلاح مع ارتداد الإطلاق
+    const aimAngle = Math.atan2(canvas.height * 0.56 - pos.y, canvas.width * 0.5 - pos.x);
+    drawWeapon(-recoil * Math.cos(aimAngle), -recoil * Math.sin(aimAngle), aimAngle, p.weapon, theme.secondary);
+
+    // الاسم والقلوب فوق الشخصية
+    ctx.globalAlpha = dead ? 0.5 : 1;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(p.name, 0, -36);
+
+    ctx.font = "12px sans-serif";
+    ctx.fillText(dead ? "💀" : "❤️".repeat(p.hearts), 0, 44);
+
+    if (p.cuffed && !dead) {
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText("⛓️", 24, -22);
+    }
+
+    ctx.restore();
+  }
+
+  function renderArenaLoop(now) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    if (shakeTime > 0) {
+      const sx = (Math.random() - 0.5) * shakeIntensity * 2;
+      const sy = (Math.random() - 0.5) * shakeIntensity * 2;
+      ctx.translate(sx, sy);
+      shakeTime--;
+    }
+
+    // أرضية الساحة
+    const grad = ctx.createRadialGradient(canvas.width / 2, canvas.height * 0.55, 30, canvas.width / 2, canvas.height * 0.55, canvas.width * 0.55);
+    grad.addColorStop(0, "#19253d");
+    grad.addColorStop(1, "#090d16");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // دائرة المواجهة المركزية
+    ctx.beginPath();
+    ctx.arc(canvas.width / 2, canvas.height * 0.56, 130, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255, 183, 3, 0.14)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    if (roomState && Array.isArray(roomState.players)) {
+      const positions = getPlayerPositions(roomState.players);
+      roomState.players.forEach((p, idx) => {
+        const pos = positions[idx];
+        const isTurn = roomState.started && roomState.turnIndex === idx && p.hearts > 0;
+        drawPlayerCharacter(p, pos, isTurn, now || 0);
+        if (recoilMap[p.id] > 0) recoilMap[p.id] = Math.max(0, recoilMap[p.id] - 1.5);
+      });
+    }
+
+    // ومضات الفوهة
+    muzzleFlashes = muzzleFlashes.filter(m => {
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(m.angle);
+      ctx.fillStyle = m.color;
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(18, 0);
+      ctx.lineTo(0, 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      m.life--;
+      return m.life > 0;
+    });
+
+    // الطلقات المتحركة
+    projectiles = projectiles.filter(pr => {
+      pr.x += pr.vx;
+      pr.y += pr.vy;
+      ctx.beginPath();
+      ctx.arc(pr.x, pr.y, pr.weapon === "bazooka" || pr.weapon === "cannon" ? 7 : 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = pr.color;
+      ctx.fill();
+      pr.life--;
+      return pr.life > 0;
+    });
+
+    // الجسيمات والانفجارات
+    particles = particles.filter(pt => {
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      pt.vx *= 0.94;
+      pt.vy *= 0.94;
+      ctx.globalAlpha = Math.max(0, pt.life / 35);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+      ctx.globalAlpha = 1;
+      pt.life--;
+      return pt.life > 0;
+    });
+
+    // النصوص العائمة
+    floatingTexts = floatingTexts.filter(ft => {
+      ft.y += ft.vy;
+      ctx.globalAlpha = Math.max(0, ft.life / 48);
+      ctx.font = "bold 16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = ft.color;
+      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.globalAlpha = 1;
+      ft.life--;
+      return ft.life > 0;
+    });
+
+    ctx.restore();
+    requestAnimationFrame(renderArenaLoop);
+  }
+  requestAnimationFrame(renderArenaLoop);
 
   function ensureConnected() {
     if (!socket || !socket.connected) {
@@ -408,7 +794,7 @@
     document.getElementById("actionModal").style.display = "none";
   }
 
-  function renderRoom() {
+  function renderUI() {
     if (!roomState) return;
     document.getElementById("lobbySection").style.display = "none";
     document.getElementById("gameSection").style.display = "block";
@@ -427,20 +813,21 @@
     const grid = document.getElementById("playersGrid");
     grid.innerHTML = "";
     roomState.players.forEach((p, idx) => {
-      const box = document.createElement("div");
       const isTurn = roomState.started && roomState.turnIndex === idx && p.hearts > 0;
-      box.className = `player-box ${isTurn ? "active-turn" : ""} ${p.hearts <= 0 ? "dead" : ""}`;
-      box.innerHTML = `
+      const theme = SKIN_THEMES[p.skin] || SKIN_THEMES.classic;
+      const card = document.createElement("div");
+      card.className = `p-card ${isTurn ? "active" : ""} ${p.hearts <= 0 ? "dead" : ""}`;
+      card.innerHTML = `
         <div><strong>${p.name}</strong> ${p.id === roomState.myPlayerId ? "(أنت)" : ""}</div>
-        <div style="margin-top:6px">القلوب: ${"❤️".repeat(p.hearts) || "💀 خارج"}</div>
+        <div style="margin-top:4px">${p.hearts > 0 ? "❤️".repeat(p.hearts) : "💀 خارج"}</div>
         <div style="font-size:12px; color:var(--muted); margin-top:4px">
-          السلاح: ${p.weapon} | المظهر: ${p.skin}
+          ${WEAPON_LABELS[p.weapon] || p.weapon} • ${theme.name}
         </div>
         <div style="font-size:12px; margin-top:4px">
-          ${p.shield ? "🛡️ درع مفعّل " : ""}${p.cuffed ? "⛓️ مقيّد " : ""}🎒 أدوات: ${p.itemsCount}
+          ${p.shield ? "🛡️ " : ""}${p.cuffed ? "⛓️ " : ""}🎒 ${p.itemsCount}
         </div>
       `;
-      grid.appendChild(box);
+      grid.appendChild(card);
     });
 
     const me = roomState.players.find((p) => p.id === roomState.myPlayerId);
