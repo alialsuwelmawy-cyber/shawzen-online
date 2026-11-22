@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Shawzen Online | لعبة الشوتكن والتحدي</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Cairo', sans-serif;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #18181b 0%, #09090b 100%);
+      color: #f4f4f5;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* Mobile Device Frame on Desktop, Fullscreen on Mobile */
+    .phone-frame {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      max-height: 880px;
+      background: linear-gradient(180deg, #121316 0%, #0b0c0e 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    @media (min-width: 480px) {
+      .phone-frame {
+        height: 92vh;
+        border-radius: 38px;
+        border: 6px solid #27272a;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 99px;
+    }
+
+    /* Interactive Shotgun Movement, Aiming & Recoil */
+    .shotgun-wrapper {
+      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+      transform-origin: center center;
+    }
+
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0); }
+      15% { transform: translate(-8px, 6px); }
+      30% { transform: translate(8px, -6px); }
+      45% { transform: translate(-6px, -4px); }
+      60% { transform: translate(6px, 4px); }
+      75% { transform: translate(-3px, 2px); }
+    }
+
+    .shake-screen {
+      animation: screenShake 0.42s ease-in-out;
+    }
+
+    @keyframes muzzleFlash {
+      0% { opacity: 1; transform: scale(0.55); }
+      45% { opacity: 0.98; transform: scale(1.4); }
+      100% { opacity: 0; transform: scale(1.7); }
+    }
+
+    .flash-active {
+      animation: muzzleFlash 0.32s ease-out forwards;
+    }
+
+    @keyframes ejectShell {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(65px, -45px) rotate(190deg) scale(1.1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(110px, 30px) rotate(380deg) scale(0.7);
+      }
+    }
+
+    .shell-ejecting {
+      animation: ejectShell 0.75s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    }
+
+    /* Dripping Blood Animations on Hit Targets */
+    @keyframes bloodDripFall {
+      0% {
+        opacity: 0.95;
+        transform: translateY(-4px) scaleY(0.4);
+      }
+      35% {
+        opacity: 1;
+        transform: translateY(8px) scaleY(1.25);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(34px) scaleY(1.65);
+      }
+    }
+
+    @keyframes bloodSplatterPulse {
+      0% {
+        opacity: 0;
+        transform: scale(0.75);
+      }
+      25% {
+        opacity: 0.92;
+        transform: scale(1.06);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.18);
+      }
+    }
+
+    .blood-overlay-active {
+      animation: bloodSplatterPulse 1.15s ease-out forwards;
+    }
+
+    .blood-drip-drop {
+      animation: bloodDripFall 1.05s cubic-bezier(0.4, 0, 0.8, 0.6) forwards;
+    }
+
+    .tactical-card {
+      background: rgba(24, 24, 27, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-3d {
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55);
+      cursor: pointer;
+    }
+    .btn-3d:active:not(:disabled) {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+    }
+
+    .table-felt {
+      background: radial-gradient(ellipse at center, #1e2229 0%, #111317 75%, #090a0d 100%);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
+    }
+
+    @keyframes floatHpPopup {
+      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+      20% { opacity: 1; transform: translate(-50%, -6px) scale(1.15); }
+      80% { opacity: 1; transform: translate(-50%, -22px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -34px) scale(0.9); }
+    }
+
+    .hp-float-badge {
+      animation: floatHpPopup 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile App Container -->
+  <div id="appFrame" class="phone-frame">
+
+    <!-- Player Hit Blood Vignette Overlay -->
+    <div id="selfBloodVignette" class="hidden pointer-events-none absolute inset-0 z-30"
+      style="background: radial-gradient(circle at center, transparent 42%, rgba(153, 27, 27, 0.45) 78%, rgba(127, 29, 29, 0.85) 100%);">
+    </div>
+
+    <!-- Top Status Bar -->
+    <header class="px-4 pt-3 pb-2 flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950/90 z-30">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 flex items-center justify-center shadow-lg shadow-red-900/30">
+          <span class="text-base">🔫</span>
+        </div>
+        <div>
+          <h1 class="text-sm font-black tracking-wide text-white leading-none">SHAWZEN <span class="text-red-500">ONLINE</span></h1>
+          <p class="text-[10px] text-zinc-400 font-semibold">الشوتكن والتحدي • v1.2</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="openRewardModal('ticket')" class="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-amber-500/30 px-2.5 py-1 rounded-full transition cursor-pointer">
+          <span class="text-amber-400 text-xs">🎟️</span>
+          <span id="ticketCount" class="text-xs font-extrabold text-amber-300">5</span>
+          <span class="w-4 h-4 rounded-full bg-amber-500 text-zinc-950 text-[11px] font-black flex items-center justify-center">+</span>
+        </button>
+
+        <button type="button" id="muteBtn" onclick="toggleMute()" class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer" title="كتم / تشغيل الصوت">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== SCREEN 1: MAIN MENU ==================== -->
+    <main id="screen-menu" class="flex-1 flex flex-col justify-between p-4 overflow-y-auto">
+      <!-- Hero Banner -->
+      <div class="relative rounded-3xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-5 text-center shadow-xl">
+        <div class="absolute -top-12 -right-12 w-36 h-36 bg-red-600/15 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] font-bold mb-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          1,248 لاعب متصل الآن
+        </span>
+
+        <h2 class="text-2xl font-black text-white mb-1">الشوتكن والتحدي</h2>
+        <p class="text-xs text-zinc-400 leading-relaxed max-w-xs mx-auto">
+          احسب الاحتمالات، استخدم أدواتك بذكاء، وواجه خصمك وجهاً لوجه في جولات حاسمة!
+        </p>
+
+        <!-- Mini Visual Shells -->
+        <div class="mt-4 flex items-center justify-center gap-3">
+          <div class="flex items-center gap-2 bg-zinc-900/90 border border-red-500/35 px-3 py-1.5 rounded-xl shadow-inner">
+            <svg viewBox="0 0 24 44" class="w-4 h-7 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]">
+              <defs>
+                <linearGradient id="miniLiveHull" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#991b1b"/><stop offset="40%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/>
+                </linearGradient>
+                <linearGradient id="miniBrass" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#b45309"/><stop offset="45%" stop-color="#fde047"/><stop offset="100%" stop-color="#78350f"/>
+                </linearGradient>
+              </defs>
+              <rect x="4" y="2" width="16" height="29" rx="3" fill="url(#miniLiveHull)" stroke="#fca5a5" stroke-width="0.8"/>
+              <line x1="4" y1="9" x2="20" y2="9" stroke="#7f1d1d" stroke-width="1"/>
+              <line x1="4" y1="15" x2="20" y2="15" stroke="#7f1d1d" stroke-width="1"/>
+              <rect x="3" y="31" width="18" height="10" rx="1.5" fill="url(#miniBrass)" stroke="#fef08a" stroke-width="0.6"/>
+              <rect x="2" y="40" width="20" height="2.5" rx="1" fill="#eab308"/>
+            </svg>
+            <span class="text-xs font-extrabold text-red-300">رصاصة حية</span>
+          </div>
+          <div class="flex items-center gap-2 bg-zinc-900/90 border border-sky-500/35 px-3 py-1.5 rounded-xl shadow-inner">
+            <svg viewBox="0 0 24 44" class="w-4 h-7 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]">
+              <defs>
+                <linearGradient id="miniBlankHull" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#0369a1"/><stop offset="45%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#0c4a6e"/>
+                </linearGradient>
+                <linearGradient id="miniSteel" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#52525b"/><stop offset="45%" stop-color="#e4e4e7"/><stop offset="100%" stop-color="#3f3f46"/>
+                </linearGradient>
+              </defs>
+              <rect x="4" y="2" width="16" height="29" rx="3" fill="url(#miniBlankHull)" fill-opacity="0.85" stroke="#bae6fd" stroke-width="0.8"/>
+              <circle cx="12" cy="16" r="3" fill="none" stroke="#e0f2fe" stroke-width="1" stroke-dasharray="2 1"/>
+              <rect x="3" y="31" width="18" height="10" rx="1.5" fill="url(#miniSteel)" stroke="#f4f4f5" stroke-width="0.6"/>
+              <rect x="2" y="40" width="20" height="2.5" rx="1" fill="#a1a1aa"/>
+            </svg>
+            <span class="text-xs font-bold text-sky-300">رصاصة فارغة</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary Game Modes -->
+      <div class="space-y-3 my-3">
+        <!-- Quick Matchmaking -->
+        <button type="button" onclick="startQuickMatch()" class="btn-3d w-full rounded-2xl bg-gradient-to-l from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 p-4 flex items-center justify-between text-right border border-red-400/30">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-black/30 flex items-center justify-center text-2xl">⚡</div>
+            <div>
+              <div class="text-base font-black text-white">لعب عشوائي (Quick Match)</div>
+              <div class="text-[11px] text-red-100/80">مطابقة فورية ضد لاعب أونلاين • 1 🎟️</div>
+            </div>
+          </div>
+          <span class="text-white/80 text-lg font-bold">←</span>
+        </button>
+
+        <!-- Private Rooms Grid -->
+        <div class="grid grid-cols-2 gap-3">
+          <button type="button" onclick="openCreateRoom()" class="btn-3d rounded-2xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 p-3.5 text-right flex flex-col justify-between">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-xl mb-2">🔑</div>
+            <div>
+              <div class="text-sm font-extrabold text-white">إنشاء غرفة</div>
+              <div class="text-[10px] text-zinc-400 mt-0.5">احصل على كود وادعُ صديقك</div>
+            </div>
+          </button>
+
+          <button type="button" onclick="openJoinRoom()" class="btn-3d rounded-2xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 p-3.5 text-right flex flex-col justify-between">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-xl mb-2">📲</div>
+            <div>
+              <div class="text-sm font-extrabold text-white">انضمام بكود</div>
+              <div class="text-[10px] text-zinc-400 mt-0.5">أدخل رمز الغرفة للبدء</div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Practice / Instant Bot Match -->
+        <button type="button" onclick="openBotSetupModal()" class="btn-3d w-full rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 p-3.5 flex items-center justify-between text-right">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-xl">🤖</div>
+            <div>
+              <div class="text-sm font-extrabold text-emerald-300">اللعب ضد بوت</div>
+              <div class="text-[11px] text-zinc-400">اختر من 1 إلى 5 بوتات (حتى 6 لاعبين) • مجاني</div>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">مجاني</span>
+        </button>
+      </div>
+
+      <!-- Monetization & Rules Footer -->
+      <div class="space-y-2.5">
+        <button type="button" onclick="openRewardModal('ticket')" class="w-full rounded-2xl bg-gradient-to-l from-amber-500/15 via-zinc-900 to-zinc-900 border border-amber-500/30 p-3 flex items-center justify-between hover:border-amber-400/60 transition cursor-pointer">
+          <div class="flex items-center gap-2.5 text-right">
+            <span class="text-xl">🎬</span>
+            <div>
+              <div class="text-xs font-extrabold text-amber-300">شاهد إعلان واحصل على +2 تذاكر</div>
+              <div class="text-[10px] text-zinc-400">نظام المكافآت الفورية (Rewarded Video Ad)</div>
+            </div>
+          </div>
+          <span class="px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 text-xs font-black">شاهد</span>
+        </button>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="toggleModal('rulesModal', true)" class="flex-1 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white transition cursor-pointer">
+            📖 شرح الأدوات والقوانين
+          </button>
+          <button type="button" onclick="toggleModal('archModal', true)" class="flex-1 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white transition cursor-pointer">
+            ⚙️ بنية الخادم (Server)
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==================== SCREEN 2: LOBBY / MATCHMAKING ==================== -->
+    <section id="screen-lobby" class="hidden flex-1 flex flex-col justify-between p-4 overflow-y-auto">
+      <div>
+        <button type="button" onclick="backToMenu()" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 cursor-pointer">
+          → رجوع للقائمة
+        </button>
+
+        <div class="mt-3 text-center">
+          <span id="lobbyBadge" class="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
+            غرفة خاصة (حتى 6 لاعبين)
+          </span>
+          <h2 id="lobbyTitle" class="text-lg font-black text-white mt-1.5">في انتظار اللاعبين...</h2>
+          <p id="lobbySubtitle" class="text-[11px] text-zinc-400 mt-0.5">شارك الرمز أو أضف بوتات لإكمال الطاولة (2 إلى 6 لاعبين)</p>
+        </div>
+
+        <!-- Room Code Box -->
+        <div id="roomCodeBox" class="mt-3 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 text-center">
+          <div class="text-[10px] text-zinc-400 font-semibold mb-1">رمز الغرفة السري (Room Code)</div>
+          <div class="flex items-center justify-center gap-2">
+            <span id="generatedRoomCode" class="text-xl font-black tracking-[0.2em] text-amber-400 font-mono">SHW-842</span>
+            <button type="button" onclick="copyRoomCode()" class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-white border border-zinc-600 transition cursor-pointer">
+              نسخ 📋
+            </button>
+          </div>
+          <div id="copyFeedback" class="text-[10px] text-emerald-400 font-bold mt-1 h-3.5"></div>
+        </div>
+
+        <!-- Host Turn Timer Selector -->
+        <div id="hostSettingsBox" class="mt-2.5 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 text-center">
+          <div class="text-[11px] text-zinc-400 font-bold mb-1.5">⏱️ مدة دور اللاعب الواحد (إعدادات المضيف):</div>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="selectTurnDuration(30)" id="durBtn-30" class="py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs border border-amber-400 transition cursor-pointer">
+              30 ثانية
+            </button>
+            <button type="button" onclick="selectTurnDuration(45)" id="durBtn-45" class="py-1.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer">
+              45 ثانية
+            </button>
+            <button type="button" onclick="selectTurnDuration(60)" id="durBtn-60" class="py-1.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer">
+              60 ثانية
+            </button>
+          </div>
+        </div>
+
+        <!-- 6-Player Lobby Grid -->
+        <div class="mt-3 bg-zinc-900/60 border border-zinc-800 p-3 rounded-3xl">
+          <div class="flex items-center justify-between mb-2 px-1">
+            <span class="text-[11px] font-bold text-zinc-300">المقاعد (<span id="lobbyPlayerCount">1</span>/6)</span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="removeLobbyBot()" class="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[10px] font-bold text-zinc-300 border border-zinc-700 cursor-pointer">- إزالة</button>
+              <button type="button" onclick="addLobbyBot()" class="px-2 py-0.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-[10px] font-bold text-emerald-300 border border-emerald-500/40 cursor-pointer">+ إضافة بوت</button>
+            </div>
+          </div>
+          <div id="lobbySeatsGrid" class="grid grid-cols-3 gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Lobby Actions -->
+      <div class="space-y-2 mt-3">
+        <button type="button" id="startLobbyMatchBtn" onclick="startLobbyMatch()" class="btn-3d w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm">
+          بدء المواجهة الآن 🔥
+        </button>
+        <button type="button" id="simulateJoinBtn" onclick="simulateHumanJoinedLobby()" class="w-full py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-[11px] font-bold text-amber-300 hover:bg-zinc-800 transition cursor-pointer">
+          ⚡ محاكاة انضمام صديق للغرفة
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== SCREEN 3: ACTIVE GAMEPLAY (UP TO 6 PLAYERS) ==================== -->
+    <section id="screen-game" class="hidden flex-1 flex flex-col justify-between p-2.5 relative overflow-hidden">
+
+      <!-- TOP BAR: ALL OPPONENTS GRID (UP TO 5 OPPONENTS) -->
+      <div class="tactical-card rounded-2xl p-2 border border-zinc-800/90 z-20">
+        <div class="flex items-center justify-between mb-1.5 px-1">
+          <span class="text-[10px] font-bold text-zinc-400">الخصوم (انقر لاختيار الهدف 🎯):</span>
+          <div class="flex items-center gap-2">
+            <div id="turnTimerBox" class="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-700 flex items-center gap-1">
+              <span class="text-[10px]">⏱️</span>
+              <span id="turnTimerDisplay" class="text-[11px] font-mono font-black text-emerald-400">30s</span>
+            </div>
+            <div class="text-[10px] font-bold text-zinc-400">
+              جولة <span id="roundNumberDisplay" class="text-xs font-black text-amber-400">1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opponents Cards Container -->
+        <div id="opponentsGridContainer" class="grid grid-cols-3 gap-1.5"></div>
+      </div>
+
+      <!-- CENTER ARENA: TABLE, SHELLS COUNTER & SHOTGUN -->
+      <div id="arenaContainer" class="table-felt flex-1 my-2 rounded-3xl relative flex flex-col items-center justify-between p-2.5 overflow-hidden">
+
+        <div class="w-full flex items-center justify-between z-10">
+          <div class="flex items-center gap-1.5 bg-zinc-950/90 border border-zinc-800 px-2.5 py-1 rounded-full">
+            <span class="text-[10px] text-zinc-400 font-bold">الطلقات:</span>
+            <span id="remainingShellsCount" class="text-xs font-black text-white">5</span>
+          </div>
+
+          <div id="doubleDamageBadge" class="hidden items-center gap-1 bg-red-600/20 border border-red-500 px-2 py-0.5 rounded-full animate-pulse">
+            <span class="text-[11px]">🪚</span>
+            <span class="text-[10px] font-black text-red-400">ضرر x2</span>
+          </div>
+
+          <button type="button" id="inGameAdItemBtn" onclick="openRewardModal('item')" class="flex items-center gap-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 px-2 py-1 rounded-full transition cursor-pointer">
+            <span class="text-[11px]">🎁</span>
+            <span class="text-[10px] font-bold text-amber-300">+أداة</span>
+          </button>
+        </div>
+
+        <!-- Status / Bot Notice Banner (Stays >= 330ms per bot action) -->
+        <div id="actionBanner" class="w-full text-center py-1.5 px-2.5 rounded-xl bg-zinc-900/90 border border-zinc-700/70 text-[11px] font-bold text-zinc-200 z-10 shadow-md">
+          جاري تجهيز البندقية...
+        </div>
+
+        <!-- CENTER SHOTGUN SVG STAGE -->
+        <div id="shotgunStage" class="relative w-full flex-1 flex items-center justify-center my-0.5">
+          <div id="selectedTargetLabel" class="absolute top-0 px-2.5 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-[10px] font-extrabold text-red-300">
+            الهدف المحدد: الخصم 🎯
+          </div>
+
+          <!-- Floating Damage / Heal Indicator -->
+          <div id="floatingHpIndicator" class="hidden absolute z-30 pointer-events-none left-1/2 top-1/2 px-3 py-1 rounded-full font-black text-sm shadow-xl border"></div>
+
+          <!-- Ejected Shell Visual -->
+          <div id="ejectedShellVisual" class="hidden absolute z-20 pointer-events-none">
+            <div id="ejectedShellBody" class="w-6 h-11"></div>
+          </div>
+
+          <!-- Movable & Rotatable Shotgun Container -->
+          <div id="shotgunContainer" class="shotgun-wrapper relative w-48 h-16 flex items-center justify-center" style="transform: translate(0px, 0px) rotate(-15deg) scale(1);">
+            <div id="muzzleFlash" class="opacity-0 pointer-events-none absolute -right-10 w-24 h-24 rounded-full bg-radial from-amber-200 via-orange-500 to-transparent blur-sm"></div>
+
+            <svg viewBox="0 0 320 100" class="w-full h-full drop-shadow-[0_12px_14px_rgba(0,0,0,0.85)]">
+              <path d="M15,52 L85,45 L92,65 L28,82 C20,84 12,78 12,70 Z" fill="#451a03" stroke="#78350f" stroke-width="2"/>
+              <path d="M12,55 L20,54 L20,80 L12,78 Z" fill="#18181b"/>
+              <rect x="82" y="38" width="85" height="26" rx="4" fill="#27272a" stroke="#52525b" stroke-width="2"/>
+              <rect x="115" y="42" width="28" height="9" rx="2" fill="#09090b" stroke="#71717a" stroke-width="1"/>
+              <path d="M92,64 C92,76 112,76 112,64" fill="none" stroke="#52525b" stroke-width="2.5"/>
+              <path d="M102,64 L99,71" stroke="#d4d4d8" stroke-width="2" stroke-linecap="round"/>
+              <rect id="svgBarrel" x="167" y="40" width="135" height="11" rx="2" fill="#3f3f46" stroke="#71717a" stroke-width="1.5"/>
+              <rect id="svgMagTube" x="167" y="53" width="122" height="8" rx="2" fill="#27272a" stroke="#52525b" stroke-width="1.2"/>
+              <rect x="182" y="50" width="54" height="15" rx="3" fill="#78350f" stroke="#92400e" stroke-width="1.5"/>
+              <line x1="192" y1="51" x2="192" y2="64" stroke="#451a03" stroke-width="2"/>
+              <line x1="202" y1="51" x2="202" y2="64" stroke="#451a03" stroke-width="2"/>
+              <line x1="212" y1="51" x2="212" y2="64" stroke="#451a03" stroke-width="2"/>
+              <line x1="222" y1="51" x2="222" y2="64" stroke="#451a03" stroke-width="2"/>
+              <circle id="svgSight" cx="296" cy="38" r="2.5" fill="#ef4444"/>
+            </svg>
+          </div>
+
+          <div class="absolute bottom-0 text-[10px] font-bold text-zinc-500 tracking-wider uppercase">▼ أنت ▼</div>
+        </div>
+
+        <!-- SHOOT ACTION BUTTONS -->
+        <div id="shootControls" class="w-full grid grid-cols-2 gap-2 z-10">
+          <button type="button" id="btnShootOpponent" onclick="handlePlayerShoot('opponent')" disabled
+            class="btn-3d py-2.5 px-2.5 rounded-2xl bg-gradient-to-t from-red-700 to-red-600 disabled:opacity-40 disabled:pointer-events-none text-white font-black text-xs flex items-center justify-center gap-1.5 border border-red-400/40">
+            <span>🎯</span>
+            <span id="btnShootOpponentText">أطلق على الخصم</span>
+          </button>
+
+          <button type="button" id="btnShootSelf" onclick="handlePlayerShoot('self')" disabled
+            class="btn-3d py-2.5 px-2.5 rounded-2xl bg-gradient-to-t from-zinc-800 to-zinc-700 disabled:opacity-40 disabled:pointer-events-none text-amber-300 font-black text-xs flex items-center justify-center gap-1.5 border border-amber-500/30">
+            <span>🔄</span>
+            <span>أطلق على نفسك</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- BOTTOM BAR: PLAYER ITEMS & HEALTH -->
+      <div class="tactical-card rounded-2xl p-2 border border-zinc-800/90 z-20">
+        <div class="mb-1.5">
+          <div class="flex items-center justify-between mb-1 px-1">
+            <span class="text-[10px] text-zinc-400 font-bold">أدواتك (اضغط للاستخدام • استمر نصف ثانية للشرح):</span>
+            <span id="playerTurnIndicator" class="text-[10px] font-black text-emerald-400">دورك للعب ●</span>
+          </div>
+          <div id="playerItemsContainer" class="grid grid-cols-5 gap-1.5 min-h-[50px]"></div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1.5 border-t border-zinc-800/80">
+          <div class="flex items-center gap-2">
+            <div class="relative w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-base">
+              😎
+              <span id="playerCuffedBadge" class="hidden absolute -top-1 -right-1 bg-amber-500 text-zinc-950 text-[9px] font-black px-1 rounded">⛓️</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-extrabold text-white">أنت</span>
+                <span id="playerHpNumeric" class="text-[10px] font-mono font-bold text-zinc-400">(5/5)</span>
+              </div>
+              <div id="playerHearts" class="flex items-center gap-0.5 mt-0.5"></div>
+            </div>
+          </div>
+
+          <button type="button" onclick="confirmLeaveGame()" class="px-3 py-1 rounded-xl bg-zinc-900 hover:bg-red-950/60 border border-zinc-700 text-[11px] font-bold text-zinc-400 hover:text-red-300 transition cursor-pointer">
+            انسحاب 🏳️
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== OVERLAYS & MODALS ==================== -->
+
+    <!-- 1. ROUND SHELLS REVEAL OVERLAY -->
+    <div id="roundRevealOverlay" class="hidden absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex items-center justify-center p-5">
+      <div class="w-full max-w-sm rounded-3xl bg-zinc-900 border border-zinc-700 p-6 text-center shadow-2xl">
+        <span class="px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 text-xs font-bold">
+          حشو البندقية • الجولة <span id="modalRoundNum">1</span>
+        </span>
+        <h3 class="text-xl font-black text-white mt-3">ذخيرة هذه الجولة</h3>
+        <p class="text-xs text-zinc-400 mt-1">سيتم خلط هذه الرصاصات عشوائياً داخل البندقية من قِبل الخادم</p>
+
+        <div id="revealShellsList" class="my-5 flex flex-wrap items-center justify-center gap-2.5 p-4 rounded-2xl bg-zinc-950 border border-zinc-800"></div>
+
+        <div class="flex justify-center gap-4 text-xs font-extrabold">
+          <span class="text-red-400">🔴 حية: <b id="revealLiveCount">0</b></span>
+          <span class="text-sky-400">⚪ فارغة: <b id="revealBlankCount">0</b></span>
+        </div>
+
+        <div class="mt-4 text-[11px] text-zinc-500 animate-pulse">جاري خلط الذخيرة وتوزيع الأدوات...</div>
+      </div>
+    </div>
+
+    <!-- 2. MAGNIFYING GLASS PRIVATE PEEK MODAL -->
+    <div id="peekModal" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-amber-500/40 p-6 text-center shadow-2xl">
+        <div class="text-4xl mb-2">🔍</div>
+        <h3 class="text-base font-black text-white">نتيجة الفحص السري</h3>
+        <p class="text-xs text-zinc-400 mt-1">الطلقة الحالية في بيت النار هي:</p>
+
+        <div id="peekResultBox" class="my-4 py-4 px-3 rounded-2xl border font-black text-lg"></div>
+
+        <button type="button" onclick="toggleModal('peekModal', false)" class="w-full py-3 rounded-xl bg-amber-500 text-zinc-950 font-black text-sm cursor-pointer">
+          فهمت (إغلاق)
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. JOIN BY CODE MODAL -->
+    <div id="joinRoomModal" class="hidden absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-zinc-700 p-5 text-center">
+        <h3 class="text-lg font-black text-white">انضمام لغرفة خاصة</h3>
+        <p class="text-xs text-zinc-400 mt-1">أدخل رمز الغرفة المكون من 6 أحرف/أرقام</p>
+
+        <input id="joinCodeInput" type="text" maxlength="7" placeholder="مثال: SHW-842"
+          class="mt-4 w-full text-center uppercase font-mono text-xl font-black tracking-widest py-3 rounded-xl bg-zinc-950 border border-zinc-700 text-amber-400 focus:outline-none focus:border-amber-500" />
+
+        <div id="joinErrorText" class="text-xs text-red-400 font-bold mt-2 h-4"></div>
+
+        <div class="mt-4 flex gap-2">
+          <button type="button" onclick="submitJoinCode()" class="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs cursor-pointer">
+            دخول الغرفة
+          </button>
+          <button type="button" onclick="toggleModal('joinRoomModal', false)" class="px-4 py-3 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. REWARDED VIDEO AD SIMULATION MODAL -->
+    <div id="rewardAdModal" class="hidden absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-amber-500/40 p-5 text-center">
+        <span class="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">AdMob / Unity Ads Simulation</span>
+        <div class="w-16 h-16 mx-auto my-3 rounded-2xl bg-amber-500/15 flex items-center justify-center text-3xl animate-bounce">
+          🎬
+        </div>
+        <h3 id="adTitle" class="text-base font-black text-white">جاري عرض الإعلان المكافئ...</h3>
+        <p id="adDesc" class="text-xs text-zinc-400 mt-1">انتظر انتهاء المؤقت للحصول على مكافأتك</p>
+
+        <div class="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden mt-4">
+          <div id="adProgressBar" class="h-full bg-gradient-to-l from-amber-400 to-red-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <div id="adTimerText" class="text-xs font-mono font-bold text-amber-300 mt-2">3 ثوانٍ متبقية...</div>
+
+        <button type="button" id="claimAdBtn" disabled onclick="claimAdReward()" class="mt-4 w-full py-3 rounded-xl bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-black text-xs transition cursor-pointer">
+          استلام المكافأة 🎁
+        </button>
+      </div>
+    </div>
+
+    <!-- 5. GAME OVER / VICTORY MODAL -->
+    <div id="gameOverModal" class="hidden absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-zinc-700 p-6 text-center shadow-2xl">
+        <div id="endIcon" class="text-5xl mb-2">🏆</div>
+        <h2 id="endTitle" class="text-2xl font-black text-white">انتصار ساحق!</h2>
+        <p id="endSubtitle" class="text-xs text-zinc-400 mt-1">لقد تغلبت على خصمك بذكاء تكتيكي</p>
+
+        <div class="my-4 p-3 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-zinc-400">عدد الجولات:</span>
+            <span id="statRounds" class="font-bold text-white">3</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">الأدوات المستخدمة:</span>
+            <span id="statItems" class="font-bold text-amber-400">4</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">المكافأة:</span>
+            <span id="statReward" class="font-bold text-emerald-400">+1 تذكرة 🎟️</span>
+          </div>
+        </div>
+
+        <div class="text-[10px] text-zinc-500 mb-3">
+          [إعلان بيني Interstitial Ad يظهر هنا بشكل متزن بعد المباراة]
+        </div>
+
+        <div class="space-y-2">
+          <button type="button" onclick="restartSameMode()" class="btn-3d w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm">
+            العب مجدداً 🔄
+          </button>
+          <button type="button" onclick="backToMenuFromEnd()" class="w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
+            العودة للقائمة الرئيسية
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. RULES & ITEMS GUIDE MODAL -->
+    <div id="rulesModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="w-full max-w-sm max-h-[82vh] flex flex-col rounded-3xl bg-zinc-900 border border-zinc-700 p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+          <h3 class="text-base font-black text-white">📖 قوانين اللعبة والأدوات</h3>
+          <button type="button" onclick="toggleModal('rulesModal', false)" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">✕</button>
+        </div>
+
+        <div class="overflow-y-auto py-3 space-y-3 text-xs text-zinc-300 leading-relaxed">
+          <div class="p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+            <div class="font-black text-amber-400 mb-1">🎯 القاعدة الذهبية:</div>
+            إذا أطلقت النار على <b>نفسك</b> وكانت الرصاصة <b>فارغة ⚪</b>، تحتفظ بدورك وتلعب مرة أخرى! أما إذا أطلقت على الخصم فينتقل الدور إليه.
+          </div>
+
+          <div class="font-black text-white pt-1">🧰 الأدوات المساعدة الخمس (اضغط مطولاً نصف ثانية على أي أداة داخل اللعب لشرحها):</div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800">
+            <span class="text-xl">🔍</span>
+            <div>
+              <div class="font-bold text-white">عدسة مكبرة (Magnifying Glass)</div>
+              <div class="text-[11px] text-zinc-400">تكشف لك سراً نوع الرصاصة الحالية في بيت النار (حية أم فارغة).</div>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800">
+            <span class="text-xl">🪚</span>
+            <div>
+              <div class="font-bold text-white">منشار يدوي (Hand Saw)</div>
+              <div class="text-[11px] text-zinc-400">يقص فوهة البندقية ليضاعف ضرر الطلقة الحية القادمة إلى 2 نقطة صحة.</div>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800">
+            <span class="text-xl">🥤</span>
+            <div>
+              <div class="font-bold text-white">شراب الطاقة (Energy Drink)</div>
+              <div class="text-[11px] text-zinc-400">يسحب أقسام البندقية ويُخرج الرصاصة الحالية دون إطلاقها مع كشف نوعها.</div>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800">
+            <span class="text-xl">⛓️</span>
+            <div>
+              <div class="font-bold text-white">قيود حديدية (Handcuffs)</div>
+              <div class="text-[11px] text-zinc-400">تُقيّد الخصم وتجعله يتخطى دوره القادم بالكامل.</div>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-2.5 p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800">
+            <span class="text-xl">💊</span>
+            <div>
+              <div class="font-bold text-white">براسيتول (Paracetamol)</div>
+              <div class="text-[11px] text-zinc-400">يستعيد +1 نقطة من شريط الصحة الخاص بك.</div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onclick="toggleModal('rulesModal', false)" class="mt-2 w-full py-2.5 rounded-xl bg-zinc-800 text-white font-bold text-xs cursor-pointer">
+          إغلاق
+        </button>
+      </div>
+    </div>
+
+    <!-- 7. SERVER ARCHITECTURE INFO MODAL -->
+    <div id="archModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="w-full max-w-sm rounded-3xl bg-zinc-900 border border-zinc-700 p-5 text-right">
+        <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+          <h3 class="text-sm font-black text-emerald-400">⚙️ البنية التقنية (Server-Authoritative)</h3>
+          <button type="button" onclick="toggleModal('archModal', false)" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">✕</button>
+        </div>
+        <div class="py-3 space-y-2.5 text-xs text-zinc-300 leading-relaxed">
+          <p>• <b>الحماية من الغش:</b> يقوم كائن <code class="text-amber-300">AppState.match</code> بمحاكاة الخادم المستقل، ولا يتم كشف نوع الرصاصة للعميل إلا عند استخدام العدسة أو إطلاق النار، كما أن أدوات الخصم مشفرة ومخفية.</p>
+          <p>• <b>جاهز للربط اللحظي:</b> تم فصل منطق الواجهة (UI) عن منطق الخادم ليسهل ربطه مباشرة مع <b>Node.js + Socket.io</b> وتصديره إلى Android (APK) و iOS (IPA).</p>
+        </div>
+        <button type="button" onclick="toggleModal('archModal', false)" class="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs cursor-pointer">
+          ممتاز
+        </button>
+      </div>
+    </div>
+
+    <!-- 8. LONG-PRESS ITEM TOOLTIP MODAL -->
+    <div id="itemTooltipModal" class="hidden absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-amber-500/50 p-6 text-center shadow-2xl">
+        <div id="tooltipItemIcon" class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-4xl mb-3">
+          🔍
+        </div>
+        <h3 id="tooltipItemName" class="text-lg font-black text-white">اسم الأداة</h3>
+        <p id="tooltipItemDesc" class="text-xs text-zinc-300 leading-relaxed mt-2 bg-zinc-950 p-3 rounded-2xl border border-zinc-800">
+          وصف الأداة هنا
+        </p>
+        <button type="button" onclick="toggleModal('itemTooltipModal', false)" class="mt-4 w-full py-2.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs cursor-pointer">
+          إغلاق
+        </button>
+      </div>
+    </div>
+
+    <!-- 9. BOT SETUP MODAL (CHOOSE 1 TO 5 BOTS) -->
+    <div id="botSetupModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-emerald-500/40 p-5 text-center shadow-2xl">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-3xl mb-2">
+          🤖
+        </div>
+        <h3 class="text-lg font-black text-white">اللعب ضد بوت</h3>
+        <p class="text-xs text-zinc-400 mt-1">اختر عدد البوتات في المواجهة (حتى 6 لاعبين معك)</p>
+
+        <div class="my-4">
+          <div class="text-[11px] text-zinc-300 font-bold mb-2">عدد البوتات المنافسة:</div>
+          <div class="grid grid-cols-5 gap-1.5">
+            <button type="button" onclick="selectBotCount(1)" id="botCountBtn-1" class="py-2.5 rounded-xl bg-emerald-500 text-zinc-950 font-black text-sm border border-emerald-400 cursor-pointer">1</button>
+            <button type="button" onclick="selectBotCount(2)" id="botCountBtn-2" class="py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-sm border border-zinc-700 hover:bg-zinc-700 cursor-pointer">2</button>
+            <button type="button" onclick="selectBotCount(3)" id="botCountBtn-3" class="py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-sm border border-zinc-700 hover:bg-zinc-700 cursor-pointer">3</button>
+            <button type="button" onclick="selectBotCount(4)" id="botCountBtn-4" class="py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-sm border border-zinc-700 hover:bg-zinc-700 cursor-pointer">4</button>
+            <button type="button" onclick="selectBotCount(5)" id="botCountBtn-5" class="py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-sm border border-zinc-700 hover:bg-zinc-700 cursor-pointer">5</button>
+          </div>
+          <div id="botTotalPlayersLabel" class="text-xs font-extrabold text-emerald-400 mt-2.5">
+            المجموع: 2 لاعبين (أنت + 1 بوت)
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="confirmStartBotMatch()" class="btn-3d flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">
+            ابدأ اللعب الآن 🔥
+          </button>
+          <button type="button" onclick="toggleModal('botSetupModal', false)" class="px-4 py-3 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== COMPLETE GAME ENGINE & AUDIO SCRIPT ==================== -->
+  <script>
+    /**
+     * 1. PROCEDURAL WEB AUDIO ENGINE
+     */
+    const AudioEngine = (() => {
+      let ctx = null;
+      let isMuted = false;
+
+      function init() {
+        try {
+          if (!ctx) {
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (ctx.state === 'suspended') {
+            ctx.resume();
+          }
+        } catch (e) {}
+      }
+
+      function toggleMute() {
+        isMuted = !isMuted;
+        return isMuted;
+      }
+
+      function playTone(freq, type, duration, vol = 0.2, slideTo = null) {
+        if (isMuted) return;
+        init();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        if (slideTo) {
+          osc.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + duration);
+        }
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      }
+
+      function playNoise(duration, filterFreq = 800, vol = 0.4) {
+        if (isMuted) return;
+        init();
+        if (!ctx) return;
+        const bufferSize = ctx.sampleRate * duration;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(filterFreq, ctx.currentTime);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+      }
+
+      return {
+        toggleMute,
+        rack: () => {
+          playTone(220, 'sawtooth', 0.08, 0.15, 340);
+          setTimeout(() => playTone(310, 'square', 0.09, 0.15, 190), 110);
+        },
+        liveBlast: () => {
+          playNoise(0.55, 1100, 0.65);
+          playTone(110, 'sawtooth', 0.45, 0.5, 28);
+        },
+        bloodHit: () => {
+          playNoise(0.28, 650, 0.35);
+          playTone(150, 'sine', 0.25, 0.3, 55);
+        },
+        blankClick: () => {
+          playTone(950, 'triangle', 0.05, 0.25, 400);
+          setTimeout(() => playTone(1200, 'sine', 0.04, 0.15), 55);
+        },
+        itemUse: () => {
+          playTone(440, 'sine', 0.12, 0.18, 660);
+        },
+        sawSound: () => {
+          playTone(180, 'sawtooth', 0.25, 0.22, 520);
+        },
+        healSound: () => {
+          playTone(330, 'sine', 0.15, 0.2, 440);
+          setTimeout(() => playTone(440, 'sine', 0.2, 0.2, 587), 130);
+        },
+        win: () => {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+            setTimeout(() => playTone(f, 'triangle', 0.25, 0.2), i * 110);
+          });
+        },
+        lose: () => {
+          [320, 280, 240, 180].forEach((f, i) => {
+            setTimeout(() => playTone(f, 'sawtooth', 0.28, 0.18), i * 140);
+          });
+        }
+      };
+    })();
+
+    /**
+     * 2. ITEM CATALOG DEFINITION
+     */
+    const ITEMS_DB = {
+      glass: {
+        id: 'glass',
+        name: 'عدسة مكبرة',
+        icon: '🔍',
+        desc: 'تكشف لك سراً نوع الرصاصة الحالية في بيت النار (حية أم فارغة) دون علم الخصم.'
+      },
+      saw: {
+        id: 'saw',
+        name: 'منشار يدوي',
+        icon: '🪚',
+        desc: 'يقص فوهة البندقية ليضاعف ضرر الطلقة الحية القادمة إلى 2 نقطة صحة.'
+      },
+      drink: {
+        id: 'drink',
+        name: 'شراب الطاقة',
+        icon: '🥤',
+        desc: 'يسحب أقسام البندقية ويُخرج الرصاصة الحالية دون إطلاقها مع كشف نوعها للجميع.'
+      },
+      cuffs: {
+        id: 'cuffs',
+        name: 'قيود حديدية',
+        icon: '⛓️',
+        desc: 'تُقيّد الخصم وتجعله يتخطى دوره القادم بالكامل.'
+      },
+      smoke: {
+        id: 'smoke',
+        name: 'براسيتول',
+        icon: '💊',
+        desc: 'يُسكّن الألم ويستعيد +1 نقطة من شريط الصحة الخاص بك فوراً.'
+      }
+    };
+
+    const ITEM_KEYS = Object.keys(ITEMS_DB);
+    const BOT_NAMES_POOL = ['Bot_Alpha', 'Bot_Sniper', 'Bot_Shadow', 'Bot_Viper', 'Bot_Ghost'];
+    const BOT_AVATARS = ['🤖', '🦾', '👾', '🎭', '💀'];
+
+    /**
+     * 3. SERVER-AUTHORITATIVE STATE (MULTIPLAYER UP TO 6 PLAYERS)
+     */
+    const AppState = {
+      tickets: 5,
+      currentMode: 'bot',
+      roomCode: '',
+      turnDuration: 30,
+      selectedBotCount: 1,
+      lobbySeats: [],
+      pendingAdRewardType: 'ticket',
+      adTimerInterval: null,
+
+      match: {
+        active: false,
+        round: 1,
+        maxHp: 5,
+        players: [], // Index 0 is always human ('player'), 1..5 are opponents
+        turnIndex: 0,
+        selectedTargetId: null,
+        chamber: [],
+        timeLeft: 30,
+        turnTimerInterval: null,
+        doubleDamage: false,
+        itemsUsedCount: 0,
+        isBusy: false,
+        bannerHoldUntil: 0,
+        bannerQueueTimer: null,
+        bleedingTargets: {} // { [playerId]: { intensity: 1|2, expiresAt: number } }
+      }
+    };
+
+    /**
+     * HELPER: DETAILED 3D-STYLED SHOTGUN SHELL SVG GENERATOR
+     */
+    function createShellSVG(type, sizeClass = 'w-8 h-14') {
+      const uid = Math.random().toString(36).substring(2, 7);
+      if (type === 'live') {
+        return `
+          <svg viewBox="0 0 32 60" class="${sizeClass} drop-shadow-[0_4px_8px_rgba(239,68,68,0.55)]">
+            <defs>
+              <linearGradient id="liveBody_${uid}" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#7f1d1d"/>
+                <stop offset="32%" stop-color="#ef4444"/>
+                <stop offset="55%" stop-color="#f87171"/>
+                <stop offset="100%" stop-color="#7f1d1d"/>
+              </linearGradient>
+              <linearGradient id="brassCap_${uid}" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#92400e"/>
+                <stop offset="35%" stop-color="#fde047"/>
+                <stop offset="65%" stop-color="#eab308"/>
+                <stop offset="100%" stop-color="#78350f"/>
+              </linearGradient>
+            </defs>
+            <path d="M7,4 Q16,1 25,4 L26,8 L6,8 Z" fill="#991b1b" stroke="#fca5a5" stroke-width="0.6"/>
+            <rect x="6" y="7" width="20" height="34" rx="2" fill="url(#liveBody_${uid})" stroke="#fca5a5" stroke-width="0.7"/>
+            <line x1="6" y1="13" x2="26" y2="13" stroke="#7f1d1d" stroke-width="1.2"/>
+            <line x1="6" y1="19" x2="26" y2="19" stroke="#7f1d1d" stroke-width="1.2"/>
+            <line x1="6" y1="25" x2="26" y2="25" stroke="#7f1d1d" stroke-width="1.2"/>
+            <line x1="6" y1="31" x2="26" y2="31" stroke="#7f1d1d" stroke-width="1.2"/>
+            <rect x="10" y="9" width="2.5" height="30" rx="1" fill="#ffffff" fill-opacity="0.28"/>
+            <rect x="5" y="41" width="22" height="14" rx="1.5" fill="url(#brassCap_${uid})" stroke="#fef08a" stroke-width="0.7"/>
+            <line x1="5" y1="46" x2="27" y2="46" stroke="#92400e" stroke-width="1"/>
+            <rect x="3.5" y="54.5" width="25" height="3.5" rx="1.2" fill="url(#brassCap_${uid})" stroke="#fef08a" stroke-width="0.6"/>
+          </svg>
+        `;
+      } else {
+        return `
+          <svg viewBox="0 0 32 60" class="${sizeClass} drop-shadow-[0_4px_8px_rgba(56,189,248,0.45)]">
+            <defs>
+              <linearGradient id="blankBody_${uid}" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#0c4a6e"/>
+                <stop offset="35%" stop-color="#38bdf8"/>
+                <stop offset="60%" stop-color="#bae6fd"/>
+                <stop offset="100%" stop-color="#075985"/>
+              </linearGradient>
+              <linearGradient id="steelCap_${uid}" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#3f3f46"/>
+                <stop offset="35%" stop-color="#f4f4f5"/>
+                <stop offset="65%" stop-color="#a1a1aa"/>
+                <stop offset="100%" stop-color="#27272a"/>
+              </linearGradient>
+            </defs>
+            <path d="M7,4 Q16,2 25,4 L26,8 L6,8 Z" fill="#0284c7" stroke="#e0f2fe" stroke-width="0.6"/>
+            <rect x="6" y="7" width="20" height="34" rx="2" fill="url(#blankBody_${uid})" fill-opacity="0.88" stroke="#bae6fd" stroke-width="0.7"/>
+            <rect x="11" y="11" width="10" height="26" rx="2" fill="#09090b" fill-opacity="0.32" stroke="#e0f2fe" stroke-width="0.6" stroke-dasharray="2 1.5"/>
+            <rect x="9.5" y="9" width="2" height="30" rx="1" fill="#ffffff" fill-opacity="0.4"/>
+            <rect x="5" y="41" width="22" height="14" rx="1.5" fill="url(#steelCap_${uid})" stroke="#f4f4f5" stroke-width="0.7"/>
+            <line x1="5" y1="46" x2="27" y2="46" stroke="#52525b" stroke-width="1"/>
+            <rect x="3.5" y="54.5" width="25" height="3.5" rx="1.2" fill="url(#steelCap_${uid})" stroke="#f4f4f5" stroke-width="0.6"/>
+          </svg>
+        `;
+      }
+    }
+
+    function showFloatingHpChange(text, isDamage = true, position = 'center') {
+      const el = document.getElementById('floatingHpIndicator');
+      if (!el) return;
+      el.textContent = text;
+      el.className = isDamage
+        ? 'hp-float-badge absolute z-30 pointer-events-none left-1/2 px-3.5 py-1 rounded-full font-black text-sm shadow-xl bg-red-600/95 border border-red-300 text-white'
+        : 'hp-float-badge absolute z-30 pointer-events-none left-1/2 px-3.5 py-1 rounded-full font-black text-sm shadow-xl bg-emerald-600/95 border border-emerald-300 text-white';
+
+      if (position === 'top') {
+        el.style.top = '16%';
+      } else if (position === 'bottom') {
+        el.style.top = '72%';
+      } else {
+        el.style.top = '45%';
+      }
+
+      el.classList.remove('hidden');
+      void el.offsetWidth;
+      setTimeout(() => {
+        el.classList.add('hidden');
+      }, 1150);
+    }
+
+    /**
+     * TRIGGER DRIPPING BLOOD ANIMATION ON HIT TARGET
+     */
+    function triggerBloodEffect(targetPlayer, damageAmount) {
+      const m = AppState.match;
+      const intensity = damageAmount >= 2 ? 2 : 1;
+      m.bleedingTargets[targetPlayer.id] = {
+        intensity,
+        expiresAt: Date.now() + 1250
+      };
+
+      AudioEngine.bloodHit();
+
+      if (targetPlayer.isSelf) {
+        const vignette = document.getElementById('selfBloodVignette');
+        if (vignette) {
+          vignette.classList.remove('hidden', 'blood-overlay-active');
+          void vignette.offsetWidth;
+          vignette.classList.add('blood-overlay-active');
+          setTimeout(() => vignette.classList.add('hidden'), 1180);
+        }
+      } else {
+        renderGameUI();
+        setTimeout(() => {
+          delete m.bleedingTargets[targetPlayer.id];
+          renderGameUI();
+        }, 1250);
+      }
+    }
+
+    /**
+     * AIM SHOTGUN DIRECTLY TOWARD TARGET CARD OR SELF
+     */
+    function aimShotgunAtTarget(targetPlayer, recoilKick = false) {
+      const gunEl = document.getElementById('shotgunContainer');
+      if (!gunEl) return;
+
+      if (!targetPlayer) {
+        gunEl.style.transform = 'translate(0px, 0px) rotate(-15deg) scale(1)';
+        return;
+      }
+
+      if (targetPlayer.isSelf) {
+        const kickY = recoilKick ? -10 : 8;
+        gunEl.style.transform = `translate(0px, ${kickY}px) rotate(90deg) scale(1.05)`;
+        return;
+      }
+
+      // Compute horizontal offset toward target opponent card in top grid
+      const opps = AppState.match.players.filter(p => !p.isSelf);
+      const oppIdx = opps.findIndex(p => p.id === targetPlayer.id);
+      const cols = opps.length <= 2 ? Math.max(1, opps.length) : 3;
+      const colIndex = oppIdx >= 0 ? (oppIdx % cols) : 1;
+      const rowIndex = oppIdx >= 0 ? Math.floor(oppIdx / cols) : 0;
+
+      let tx = 0;
+      if (cols === 2) {
+        tx = colIndex === 0 ? 52 : -52;
+      } else if (cols === 3) {
+        tx = colIndex === 0 ? 74 : (colIndex === 2 ? -74 : 0);
+      }
+
+      const ty = recoilKick ? 10 : -14 - (rowIndex * 4);
+      const tiltAngle = -90 + (tx * 0.24);
+      gunEl.style.transform = `translate(${tx}px, ${ty}px) rotate(${tiltAngle}deg) scale(1.05)`;
+    }
+
+    function resetShotgunAim() {
+      const gunEl = document.getElementById('shotgunContainer');
+      if (!gunEl) return;
+      gunEl.style.transform = 'translate(0px, 0px) rotate(-15deg) scale(1)';
+    }
+
+    /**
+     * 4. NAVIGATION & UI HELPERS
+     */
+    function showScreen(screenId) {
+      ['screen-menu', 'screen-lobby', 'screen-game'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      const target = document.getElementById(screenId);
+      if (target) target.classList.remove('hidden');
+    }
+
+    function toggleModal(modalId, show) {
+      const el = document.getElementById(modalId);
+      if (!el) return;
+      if (show) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    function updateTicketsUI() {
+      const el = document.getElementById('ticketCount');
+      if (el) el.textContent = AppState.tickets;
+    }
+
+    function toggleMute() {
+      const muted = AudioEngine.toggleMute();
+      const btn = document.getElementById('muteBtn');
+      if (btn) btn.textContent = muted ? '🔇' : '🔊';
+    }
+
+    function backToMenu() {
+      stopTurnTimer();
+      if (AppState.match.bannerQueueTimer) {
+        clearTimeout(AppState.match.bannerQueueTimer);
+        AppState.match.bannerQueueTimer = null;
+      }
+      AppState.match.active = false;
+      showScreen('screen-menu');
+    }
+
+    /**
+     * 5. BOT SETUP & LOBBY FLOW (UP TO 6 PLAYERS)
+     */
+    function openBotSetupModal() {
+      selectBotCount(AppState.selectedBotCount || 1);
+      toggleModal('botSetupModal', true);
+    }
+
+    function selectBotCount(count) {
+      AppState.selectedBotCount = count;
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`botCountBtn-${i}`);
+        if (!btn) continue;
+        if (i === count) {
+          btn.className = 'py-2.5 rounded-xl bg-emerald-500 text-zinc-950 font-black text-sm border border-emerald-400 cursor-pointer';
+        } else {
+          btn.className = 'py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-sm border border-zinc-700 hover:bg-zinc-700 cursor-pointer';
+        }
+      }
+      const total = count + 1;
+      document.getElementById('botTotalPlayersLabel').textContent = `المجموع: ${total} لاعبين (أنت + ${count} ${count === 1 ? 'بوت' : 'بوتات'})`;
+      AudioEngine.itemUse();
+    }
+
+    function confirmStartBotMatch() {
+      toggleModal('botSetupModal', false);
+      AppState.currentMode = 'bot';
+      const participants = [
+        { id: 'player', name: 'أنت', avatar: '😎', isBot: false, isSelf: true }
+      ];
+      for (let i = 0; i < AppState.selectedBotCount; i++) {
+        participants.push({
+          id: `bot_${i + 1}`,
+          name: BOT_NAMES_POOL[i % BOT_NAMES_POOL.length],
+          avatar: BOT_AVATARS[i % BOT_AVATARS.length],
+          isBot: true,
+          isSelf: false
+        });
+      }
+      initMatch(participants);
+    }
+
+    function startQuickMatch() {
+      if (AppState.tickets <= 0) {
+        openRewardModal('ticket');
+        return;
+      }
+      AppState.tickets--;
+      updateTicketsUI();
+      AppState.currentMode = 'quick';
+      selectTurnDuration(30);
+      initLobbySeats();
+      setupLobbyUI({
+        badge: 'مطابقة عشوائية (حتى 6 لاعبين)',
+        title: 'جاري البحث عن لاعبين أونلاين...',
+        subtitle: 'يمكنك بدء المواجهة أو إضافة بوتات في أي وقت',
+        showCodeBox: false,
+        showHostSettings: false
+      });
+      showScreen('screen-lobby');
+
+      setTimeout(() => {
+        if (!document.getElementById('screen-lobby').classList.contains('hidden') && AppState.currentMode === 'quick') {
+          simulateHumanJoinedLobby();
+        }
+      }, 1200);
+    }
+
+    function openCreateRoom() {
+      if (AppState.tickets <= 0) {
+        openRewardModal('ticket');
+        return;
+      }
+      AppState.tickets--;
+      updateTicketsUI();
+      AppState.currentMode = 'private';
+      const randomNum = Math.floor(100 + Math.random() * 900);
+      AppState.roomCode = `SHW-${randomNum}`;
+      document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
+      document.getElementById('copyFeedback').textContent = '';
+
+      initLobbySeats();
+      setupLobbyUI({
+        badge: 'غرفة خاصة (حتى 6 لاعبين)',
+        title: 'غرفة التحدي الجماعي',
+        subtitle: 'ادعُ أصدقاءك بالرمز أو أضف بوتات حتى 6 لاعبين',
+        showCodeBox: true,
+        showHostSettings: true
+      });
+      showScreen('screen-lobby');
+    }
+
+    function initLobbySeats() {
+      AppState.lobbySeats = [
+        { id: 'player', name: 'أنت (المضيف)', avatar: '😎', isBot: false, isSelf: true }
+      ];
+    }
+
+    function renderLobbySeats() {
+      const grid = document.getElementById('lobbySeatsGrid');
+      const countEl = document.getElementById('lobbyPlayerCount');
+      if (!grid || !countEl) return;
+
+      countEl.textContent = AppState.lobbySeats.length;
+      grid.innerHTML = '';
+
+      for (let i = 0; i < 6; i++) {
+        const seat = AppState.lobbySeats[i];
+        const card = document.createElement('div');
+        if (seat) {
+          card.className = 'p-2 rounded-2xl bg-zinc-900 border border-emerald-500/50 text-center flex flex-col items-center justify-center';
+          card.innerHTML = `
+            <div class="text-xl mb-1">${seat.avatar}</div>
+            <div class="text-[10px] font-extrabold text-white truncate w-full">${seat.name}</div>
+            <span class="mt-0.5 px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">${seat.isBot ? 'بوت 🤖' : 'جاهز ✓'}</span>
+          `;
+        } else {
+          card.className = 'p-2 rounded-2xl bg-zinc-950/60 border border-dashed border-zinc-700 text-center flex flex-col items-center justify-center min-h-[74px]';
+          card.innerHTML = `
+            <div class="text-base text-zinc-600">+</div>
+            <div class="text-[9px] text-zinc-500 font-bold mt-0.5">مقعد شاغر</div>
+          `;
+        }
+        grid.appendChild(card);
+      }
+
+      const startBtn = document.getElementById('startLobbyMatchBtn');
+      if (startBtn) {
+        startBtn.disabled = AppState.lobbySeats.length < 2;
+        startBtn.className = AppState.lobbySeats.length >= 2
+          ? 'btn-3d w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm'
+          : 'w-full py-3 rounded-2xl bg-zinc-800 text-zinc-500 font-black text-sm cursor-not-allowed';
+      }
+    }
+
+    function addLobbyBot() {
+      if (AppState.lobbySeats.length >= 6) return;
+      const botIdx = AppState.lobbySeats.filter(s => s.isBot).length;
+      AppState.lobbySeats.push({
+        id: `bot_${Date.now()}_${botIdx}`,
+        name: BOT_NAMES_POOL[botIdx % BOT_NAMES_POOL.length],
+        avatar: BOT_AVATARS[botIdx % BOT_AVATARS.length],
+        isBot: true,
+        isSelf: false
+      });
+      AudioEngine.itemUse();
+      renderLobbySeats();
+    }
+
+    function removeLobbyBot() {
+      if (AppState.lobbySeats.length <= 1) return;
+      AppState.lobbySeats.pop();
+      AudioEngine.blankClick();
+      renderLobbySeats();
+    }
+
+    function simulateHumanJoinedLobby() {
+      if (AppState.lobbySeats.length >= 6) return;
+      const friendNames = ['Sniper_Ali', 'Kareem_99', 'Shadow_IQ', 'Zaid_Pro', 'Tariq_X'];
+      const usedNames = AppState.lobbySeats.map(s => s.name);
+      const available = friendNames.find(n => !usedNames.includes(n)) || `Player_${AppState.lobbySeats.length + 1}`;
+      AppState.lobbySeats.push({
+        id: `friend_${Date.now()}`,
+        name: available,
+        avatar: '🧑🏻',
+        isBot: true,
+        isSelf: false
+      });
+      AudioEngine.healSound();
+      renderLobbySeats();
+    }
+
+    function startLobbyMatch() {
+      if (AppState.lobbySeats.length < 2) return;
+      initMatch([...AppState.lobbySeats]);
+    }
+
+    function selectTurnDuration(seconds) {
+      AppState.turnDuration = seconds;
+      [30, 45, 60].forEach(sec => {
+        const btn = document.getElementById(`durBtn-${sec}`);
+        if (!btn) return;
+        if (sec === seconds) {
+          btn.className = 'py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs border border-amber-400 transition cursor-pointer';
+        } else {
+          btn.className = 'py-1.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer';
+        }
+      });
+      AudioEngine.itemUse();
+    }
+
+    function openJoinRoom() {
+      document.getElementById('joinCodeInput').value = '';
+      document.getElementById('joinErrorText').textContent = '';
+      toggleModal('joinRoomModal', true);
+    }
+
+    function submitJoinCode() {
+      const val = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+      if (val.length < 4) {
+        document.getElementById('joinErrorText').textContent = 'الرجاء إدخال رمز غرفة صحيح!';
+        return;
+      }
+      toggleModal('joinRoomModal', false);
+      AppState.currentMode = 'private';
+      AppState.roomCode = val;
+      document.getElementById('generatedRoomCode').textContent = val;
+
+      initLobbySeats();
+      AppState.lobbySeats.push({
+        id: 'host_remote',
+        name: 'المضيف (Host)',
+        avatar: '👑',
+        isBot: true,
+        isSelf: false
+      });
+
+      setupLobbyUI({
+        badge: `غرفة خاصة (${val})`,
+        title: 'تم الانضمام للغرفة بنجاح!',
+        subtitle: 'بانتظار بدء الجولة من المضيف أو إضافة لاعبين',
+        showCodeBox: true,
+        showHostSettings: false
+      });
+      showScreen('screen-lobby');
+    }
+
+    function setupLobbyUI({ badge, title, subtitle, showCodeBox, showHostSettings }) {
+      document.getElementById('lobbyBadge').textContent = badge;
+      document.getElementById('lobbyTitle').textContent = title;
+      document.getElementById('lobbySubtitle').textContent = subtitle;
+      document.getElementById('roomCodeBox').style.display = showCodeBox ? 'block' : 'none';
+      document.getElementById('hostSettingsBox').style.display = showHostSettings ? 'block' : 'none';
+      renderLobbySeats();
+    }
+
+    function copyRoomCode() {
+      const code = AppState.roomCode;
+      const tempInput = document.createElement('input');
+      tempInput.value = code;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        document.getElementById('copyFeedback').textContent = 'تم نسخ رمز الغرفة بنجاح! ✓';
+      } catch (e) {
+        document.getElementById('copyFeedback').textContent = `الرمز: ${code}`;
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    /**
+     * 6. REWARDED VIDEO AD SYSTEM
+     */
+    function openRewardModal(type) {
+      AppState.pendingAdRewardType = type;
+      const claimBtn = document.getElementById('claimAdBtn');
+      const bar = document.getElementById('adProgressBar');
+      const timerTxt = document.getElementById('adTimerText');
+
+      document.getElementById('adTitle').textContent = type === 'ticket'
+        ? 'إعلان مكافأة التذاكر (+2 🎟️)'
+        : 'إعلان أداة مساعدة إضافية (+1 🧰)';
+
+      claimBtn.disabled = true;
+      bar.style.width = '0%';
+      let secondsLeft = 3;
+      timerTxt.textContent = `${secondsLeft} ثوانٍ متبقية...`;
+      toggleModal('rewardAdModal', true);
+
+      if (AppState.adTimerInterval) clearInterval(AppState.adTimerInterval);
+      let step = 0;
+      AppState.adTimerInterval = setInterval(() => {
+        step++;
+        bar.style.width = `${Math.min(100, (step / 3) * 100)}%`;
+        secondsLeft = Math.max(0, 3 - step);
+        if (secondsLeft > 0) {
+          timerTxt.textContent = `${secondsLeft} ثوانٍ متبقية...`;
+        } else {
+          clearInterval(AppState.adTimerInterval);
+          timerTxt.textContent = 'اكتمل الإعلان! يمكنك استلام مكافأتك الآن';
+          claimBtn.disabled = false;
+        }
+      }, 900);
+    }
+
+    function claimAdReward() {
+      toggleModal('rewardAdModal', false);
+      AudioEngine.healSound();
+
+      if (AppState.pendingAdRewardType === 'ticket') {
+        AppState.tickets += 2;
+        updateTicketsUI();
+      } else if (AppState.pendingAdRewardType === 'item' && AppState.match.active) {
+        const me = getSelfPlayer();
+        if (me && me.items.length < 5) {
+          const randomKey = ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)];
+          me.items.push(randomKey);
+          setActionBanner(`🎁 حصلت على أداة إضافية: ${ITEMS_DB[randomKey].name}!`, 'gold');
+          renderGameUI();
+        }
+      }
+    }
+
+    /**
+     * 7. CORE MULTIPLAYER MATCH & ROUND ENGINE (UP TO 6 PLAYERS)
+     */
+    function getSelfPlayer() {
+      return AppState.match.players[0];
+    }
+
+    function getCurrentTurnPlayer() {
+      return AppState.match.players[AppState.match.turnIndex];
+    }
+
+    function getAliveOpponents() {
+      return AppState.match.players.filter(p => !p.isSelf && p.hp > 0);
+    }
+
+    function getAlivePlayers() {
+      return AppState.match.players.filter(p => p.hp > 0);
+    }
+
+    function initMatch(participants) {
+      const m = AppState.match;
+      m.active = true;
+      m.round = 1;
+      m.maxHp = 5;
+      m.bleedingTargets = {};
+      m.bannerHoldUntil = 0;
+      m.players = participants.map(p => ({
+        id: p.id,
+        name: p.name,
+        avatar: p.avatar,
+        isBot: p.isBot,
+        isSelf: p.isSelf,
+        hp: 5,
+        maxHp: 5,
+        eliminated: false,
+        cuffed: false,
+        items: []
+      }));
+      m.turnIndex = 0;
+      m.selectedTargetId = m.players[1] ? m.players[1].id : null;
+      m.doubleDamage = false;
+      m.itemsUsedCount = 0;
+      m.isBusy = false;
+
+      resetShotgunAim();
+      updateShotgunBarrelVisual(false);
+      showScreen('screen-game');
+      startNewRound();
+    }
+
+    function startNewRound() {
+      const m = AppState.match;
+      m.isBusy = true;
+      stopTurnTimer();
+      m.doubleDamage = false;
+      m.bleedingTargets = {};
+      m.players.forEach(p => { p.cuffed = false; });
+      resetShotgunAim();
+      updateShotgunBarrelVisual(false);
+
+      const aliveCount = getAlivePlayers().length;
+      const baseLive = Math.min(5, Math.max(1, Math.floor(aliveCount * 0.7) + Math.floor(m.round / 2)));
+      const baseBlank = Math.min(5, Math.max(2, aliveCount + (m.round % 2)));
+      const itemsPerRound = 2;
+
+      const unshuffled = [];
+      for (let i = 0; i < baseLive; i++) unshuffled.push('live');
+      for (let i = 0; i < baseBlank; i++) unshuffled.push('blank');
+
+      const shuffled = [...unshuffled];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      m.chamber = shuffled;
+
+      getAlivePlayers().forEach(p => {
+        for (let i = 0; i < itemsPerRound; i++) {
+          if (p.items.length < 5) {
+            p.items.push(ITEM_KEYS[Math.floor(Math.random() * ITEM_KEYS.length)]);
+          }
+        }
+      });
+
+      document.getElementById('modalRoundNum').textContent = m.round;
+      document.getElementById('revealLiveCount').textContent = baseLive;
+      document.getElementById('revealBlankCount').textContent = baseBlank;
+
+      const listEl = document.getElementById('revealShellsList');
+      listEl.innerHTML = '';
+      unshuffled.forEach(type => {
+        const shellWrap = document.createElement('div');
+        shellWrap.className = 'flex flex-col items-center gap-1 bg-zinc-900/90 px-2.5 py-2 rounded-2xl border ' +
+          (type === 'live' ? 'border-red-500/40' : 'border-sky-500/40');
+        shellWrap.innerHTML = `
+          ${createShellSVG(type, 'w-7 h-12')}
+          <span class="text-[10px] font-black ${type === 'live' ? 'text-red-400' : 'text-sky-300'}">${type === 'live' ? 'حية' : 'فارغة'}</span>
+        `;
+        listEl.appendChild(shellWrap);
+      });
+
+      toggleModal('roundRevealOverlay', true);
+      ensureValidSelectedTarget();
+      renderGameUI();
+
+      setTimeout(() => {
+        toggleModal('roundRevealOverlay', false);
+        AudioEngine.rack();
+        m.isBusy = false;
+        if (getCurrentTurnPlayer().hp <= 0) {
+          advanceTurnIndex();
+        }
+        const activeP = getCurrentTurnPlayer();
+        if (activeP.isSelf) {
+          setActionBanner('دورك الآن! اختر خصماً أو أداة للعب 🎯', 'neutral', true);
+          const targetObj = m.players.find(p => p.id === m.selectedTargetId);
+          aimShotgunAtTarget(targetObj, false);
+        } else {
+          setActionBanner(`دور ${activeP.name} الآن...`, 'neutral', true);
+        }
+        startTurnTimer();
+        renderGameUI();
+        if (!activeP.isSelf) {
+          setTimeout(runOpponentAI, 900);
+        }
+      }, 2400);
+    }
+
+    function ensureValidSelectedTarget() {
+      const m = AppState.match;
+      const aliveOpps = getAliveOpponents();
+      if (aliveOpps.length === 0) {
+        m.selectedTargetId = null;
+        return;
+      }
+      const stillAlive = aliveOpps.find(o => o.id === m.selectedTargetId);
+      if (!stillAlive) {
+        m.selectedTargetId = aliveOpps[0].id;
+      }
+    }
+
+    function selectOpponentTarget(oppId) {
+      const m = AppState.match;
+      const opp = m.players.find(p => p.id === oppId && !p.isSelf && p.hp > 0);
+      if (!opp) return;
+      m.selectedTargetId = opp.id;
+      AudioEngine.blankClick();
+      if (getCurrentTurnPlayer()?.isSelf && !m.isBusy) {
+        aimShotgunAtTarget(opp, false);
+      }
+      renderGameUI();
+    }
+
+    function advanceTurnIndex() {
+      const m = AppState.match;
+      const total = m.players.length;
+      for (let step = 1; step <= total; step++) {
+        const nextIdx = (m.turnIndex + step) % total;
+        const candidate = m.players[nextIdx];
+        if (candidate.hp <= 0) continue;
+        if (candidate.cuffed) {
+          candidate.cuffed = false;
+          setActionBanner(`⛓️ ${candidate.name} مقيد وتخطى دوره!`, 'gold', true);
+          continue;
+        }
+        m.turnIndex = nextIdx;
+        return;
+      }
+    }
+
+    function startTurnTimer() {
+      const m = AppState.match;
+      stopTurnTimer();
+      m.timeLeft = AppState.turnDuration;
+      updateTimerDisplay();
+
+      m.turnTimerInterval = setInterval(() => {
+        if (!m.active || m.isBusy) return;
+        m.timeLeft--;
+        updateTimerDisplay();
+
+        if (m.timeLeft <= 0) {
+          stopTurnTimer();
+          handleTurnTimeout();
+        }
+      }, 1000);
+    }
+
+    function stopTurnTimer() {
+      if (AppState.match.turnTimerInterval) {
+        clearInterval(AppState.match.turnTimerInterval);
+        AppState.match.turnTimerInterval = null;
+      }
+    }
+
+    function updateTimerDisplay() {
+      const el = document.getElementById('turnTimerDisplay');
+      const box = document.getElementById('turnTimerBox');
+      if (!el || !box) return;
+      const t = AppState.match.timeLeft;
+      el.textContent = `${t}s`;
+      if (t <= 10) {
+        el.className = 'text-[11px] font-mono font-black text-red-400 animate-pulse';
+        box.className = 'px-2 py-0.5 rounded-lg bg-red-950/60 border border-red-500/60 flex items-center gap-1';
+      } else {
+        el.className = 'text-[11px] font-mono font-black text-emerald-400';
+        box.className = 'px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-700 flex items-center gap-1';
+      }
+    }
+
+    function handleTurnTimeout() {
+      const m = AppState.match;
+      if (!m.active || m.isBusy) return;
+      const activeP = getCurrentTurnPlayer();
+      if (activeP.isSelf) {
+        ensureValidSelectedTarget();
+        setActionBanner('⌛ انتهى وقت دورك! تم الإطلاق تلقائياً...', 'danger', true);
+        executeShot(activeP.id, m.selectedTargetId);
+      } else {
+        const targets = getAlivePlayers().filter(p => p.id !== activeP.id);
+        const randomTarget = targets[Math.floor(Math.random() * targets.length)];
+        setActionBanner(`⌛ انتهى وقت ${activeP.name}!`, 'gold', true);
+        executeShot(activeP.id, randomTarget.id);
+      }
+    }
+
+    /**
+     * PACED NOTICE BANNER (ENSURES EACH BOT NOTICE STAYS VISIBLE >= 350ms BEFORE NEXT NOTICE)
+     */
+    function setActionBanner(text, highlight = 'neutral', immediate = false) {
+      const m = AppState.match;
+      const MIN_NOTICE_HOLD_MS = 360; // Strictly > 1/3 second (333ms)
+
+      const applyText = () => {
+        const el = document.getElementById('actionBanner');
+        if (!el) return;
+        el.textContent = text;
+        el.className = 'w-full text-center py-1.5 px-2.5 rounded-xl text-[11px] font-bold z-10 shadow-md transition-colors ';
+        if (highlight === 'danger') {
+          el.className += 'bg-red-950/90 border border-red-500/60 text-red-200';
+        } else if (highlight === 'safe') {
+          el.className += 'bg-sky-950/90 border border-sky-500/60 text-sky-200';
+        } else if (highlight === 'gold') {
+          el.className += 'bg-amber-950/90 border border-amber-500/60 text-amber-200';
+        } else {
+          el.className += 'bg-zinc-900/90 border border-zinc-700/70 text-zinc-200';
+        }
+        m.bannerHoldUntil = Date.now() + MIN_NOTICE_HOLD_MS;
+      };
+
+      if (m.bannerQueueTimer) {
+        clearTimeout(m.bannerQueueTimer);
+        m.bannerQueueTimer = null;
+      }
+
+      const waitMs = immediate ? 0 : Math.max(0, m.bannerHoldUntil - Date.now());
+      if (waitMs === 0) {
+        applyText();
+      } else {
+        m.bannerQueueTimer = setTimeout(() => {
+          m.bannerQueueTimer = null;
+          applyText();
+        }, waitMs);
+      }
+    }
+
+    function updateShotgunBarrelVisual(isSawed) {
+      const barrel = document.getElementById('svgBarrel');
+      const mag = document.getElementById('svgMagTube');
+      const sight = document.getElementById('svgSight');
+      const badge = document.getElementById('doubleDamageBadge');
+
+      if (isSawed) {
+        barrel.setAttribute('width', '82');
+        mag.setAttribute('width', '76');
+        sight.setAttribute('cx', '243');
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+      } else {
+        barrel.setAttribute('width', '135');
+        mag.setAttribute('width', '122');
+        sight.setAttribute('cx', '296');
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+      }
+    }
+
+    function renderGameUI() {
+      const m = AppState.match;
+      const me = getSelfPlayer();
+      const activeP = getCurrentTurnPlayer();
+      ensureValidSelectedTarget();
+
+      document.getElementById('roundNumberDisplay').textContent = m.round;
+      document.getElementById('remainingShellsCount').textContent = m.chamber.length;
+
+      // Render Self Hearts & Cuffs (5 Hearts)
+      renderHearts('playerHearts', me.hp, me.maxHp || m.maxHp);
+      const pHpNum = document.getElementById('playerHpNumeric');
+      if (pHpNum) pHpNum.textContent = `(${me.hp}/${me.maxHp || m.maxHp})`;
+      const pCuffEl = document.getElementById('playerCuffedBadge');
+      if (me.cuffed) pCuffEl.classList.remove('hidden');
+      else pCuffEl.classList.add('hidden');
+
+      // Render Opponents Grid (1 to 5 opponents) with Dripping Blood Overlay
+      const oppsGrid = document.getElementById('opponentsGridContainer');
+      const opponents = m.players.filter(p => !p.isSelf);
+      oppsGrid.className = opponents.length <= 2
+        ? `grid grid-cols-${Math.max(1, opponents.length)} gap-1.5`
+        : 'grid grid-cols-3 gap-1.5';
+      oppsGrid.innerHTML = '';
+
+      opponents.forEach(opp => {
+        const isDead = opp.hp <= 0 || opp.eliminated;
+        const isTurn = (activeP && activeP.id === opp.id && !isDead);
+        const isTarget = (m.selectedTargetId === opp.id && !isDead);
+        const bleedInfo = m.bleedingTargets[opp.id];
+        const isBleeding = Boolean(bleedInfo && bleedInfo.expiresAt > Date.now());
+
+        const card = document.createElement('div');
+        card.onclick = () => { if (!isDead) selectOpponentTarget(opp.id); };
+
+        let borderClass = 'border-zinc-800 bg-zinc-950/70';
+        if (isDead) {
+          borderClass = 'border-zinc-900 bg-zinc-950/40 opacity-45 grayscale';
+        } else if (isBleeding) {
+          borderClass = 'border-red-500 bg-red-950/60 shadow-[0_0_16px_rgba(220,38,38,0.65)]';
+        } else if (isTurn) {
+          borderClass = 'border-amber-400 bg-amber-950/25 shadow-[0_0_12px_rgba(251,191,36,0.25)]';
+        } else if (isTarget) {
+          borderClass = 'border-red-500 bg-red-950/25';
+        }
+
+        card.className = `relative overflow-hidden rounded-xl p-1.5 border transition cursor-pointer select-none ${borderClass}`;
+
+        const oppMaxHp = opp.maxHp || m.maxHp || 5;
+        let heartsHtml = '';
+        for (let h = 0; h < oppMaxHp; h++) {
+          heartsHtml += h < opp.hp
+            ? '<span class="text-[8px] leading-none text-red-500">❤️</span>'
+            : '<span class="text-[8px] leading-none opacity-35">🖤</span>';
+        }
+
+        const statusBadgeHtml = isDead
+          ? '<span class="text-[9px] text-zinc-500 font-bold">مُقصى 💀</span>'
+          : '';
+
+        const bloodDripsHtml = isBleeding ? `
+          <div class="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+            <div class="absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-red-600/85 to-transparent"></div>
+            <span class="blood-drip-drop absolute top-0.5 right-2 w-1.5 h-3.5 rounded-full bg-red-600 shadow-[0_0_4px_#dc2626]"></span>
+            <span class="blood-drip-drop absolute top-0.5 left-1/2 w-1.5 h-4 rounded-full bg-red-500" style="animation-delay: 0.12s;"></span>
+            <span class="blood-drip-drop absolute top-0.5 left-2.5 w-1.5 h-3 rounded-full bg-red-700" style="animation-delay: 0.22s;"></span>
+            ${bleedInfo.intensity >= 2 ? `
+              <span class="blood-drip-drop absolute top-1 right-1/3 w-2 h-4 rounded-full bg-red-500" style="animation-delay: 0.08s;"></span>
+              <span class="blood-drip-drop absolute top-1 left-1/3 w-2 h-4 rounded-full bg-red-600" style="animation-delay: 0.18s;"></span>
+            ` : ''}
+          </div>
+        ` : '';
+
+        card.innerHTML = `
+          ${bloodDripsHtml}
+          <div class="flex items-center justify-between gap-1 relative z-10">
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="text-xs leading-none">${isDead ? '💀' : opp.avatar}</span>
+              <span class="text-[10px] font-extrabold text-white truncate">${opp.name}</span>
+            </div>
+            ${isTarget && !isDead ? '<span class="text-[10px] leading-none">🎯</span>' : ''}
+            ${opp.cuffed && !isDead ? '<span class="text-[9px] bg-amber-500 text-zinc-950 px-1 rounded font-black">⛓️</span>' : ''}
+          </div>
+          <div class="flex items-center justify-between mt-1 gap-1 relative z-10">
+            <div class="flex items-center gap-[1px]">${heartsHtml}</div>
+            ${statusBadgeHtml}
+          </div>
+          ${isTurn ? '<div class="absolute -top-1.5 left-1.5 px-1.5 rounded bg-amber-500 text-zinc-950 text-[8px] font-black z-20">دوره</div>' : ''}
+        `;
+        oppsGrid.appendChild(card);
+      });
+
+      // Update Target Label & Shoot Buttons
+      const selectedOpp = m.players.find(p => p.id === m.selectedTargetId);
+      const targetLabelEl = document.getElementById('selectedTargetLabel');
+      const shootOppBtnText = document.getElementById('btnShootOpponentText');
+      if (selectedOpp) {
+        targetLabelEl.textContent = `الهدف المحدد: ${selectedOpp.name} 🎯`;
+        shootOppBtnText.textContent = `أطلق على ${selectedOpp.name}`;
+      } else {
+        targetLabelEl.textContent = 'اختر هدفاً';
+        shootOppBtnText.textContent = 'أطلق على الخصم';
+      }
+
+      const isPlayerTurn = (activeP && activeP.isSelf && !m.isBusy);
+      document.getElementById('btnShootOpponent').disabled = !isPlayerTurn || !selectedOpp;
+      document.getElementById('btnShootSelf').disabled = !isPlayerTurn;
+
+      const pTurnInd = document.getElementById('playerTurnIndicator');
+      if (activeP && activeP.isSelf) {
+        pTurnInd.textContent = 'دورك للعب ●';
+        pTurnInd.className = 'text-[10px] font-black text-emerald-400';
+      } else if (activeP) {
+        pTurnInd.textContent = `دور ${activeP.name}...`;
+        pTurnInd.className = 'text-[10px] font-bold text-amber-400';
+      }
+
+      // Render Player Items (5 slots) with 0.5-second (500ms) Long Press Tooltip
+      const pItemsEl = document.getElementById('playerItemsContainer');
+      pItemsEl.innerHTML = '';
+      for (let i = 0; i < 5; i++) {
+        const key = me.items[i];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        if (key) {
+          const item = ITEMS_DB[key];
+          btn.disabled = !isPlayerTurn;
+          btn.className = 'relative flex flex-col items-center justify-center p-1 rounded-xl bg-zinc-900 hover:bg-zinc-800 active:scale-95 disabled:opacity-50 border border-zinc-700 hover:border-amber-500/60 transition select-none cursor-pointer';
+          btn.innerHTML = `
+            <span class="text-base leading-none pointer-events-none">${item.icon}</span>
+            <span class="text-[9px] font-bold text-zinc-300 mt-0.5 truncate w-full text-center pointer-events-none">${item.name.split(' ')[0]}</span>
+          `;
+
+          let pressTimer = null;
+          let longPressTriggered = false;
+
+          const startPress = () => {
+            longPressTriggered = false;
+            pressTimer = setTimeout(() => {
+              longPressTriggered = true;
+              showItemTooltip(item);
+            }, 500);
+          };
+
+          const cancelPress = () => {
+            if (pressTimer) {
+              clearTimeout(pressTimer);
+              pressTimer = null;
+            }
+          };
+
+          btn.addEventListener('pointerdown', startPress);
+          btn.addEventListener('pointerup', cancelPress);
+          btn.addEventListener('pointerleave', cancelPress);
+          btn.addEventListener('pointercancel', cancelPress);
+          btn.addEventListener('contextmenu', e => e.preventDefault());
+
+          btn.onclick = () => {
+            if (longPressTriggered) {
+              longPressTriggered = false;
+              return;
+            }
+            usePlayerItem(i);
+          };
+        } else {
+          btn.disabled = true;
+          btn.className = 'rounded-xl bg-zinc-950/50 border border-dashed border-zinc-800/80 flex items-center justify-center text-zinc-700 text-xs';
+          btn.textContent = '•';
+        }
+        pItemsEl.appendChild(btn);
+      }
+
+      document.getElementById('inGameAdItemBtn').style.display =
+        (me.items.length < 5 && isPlayerTurn) ? 'flex' : 'none';
+    }
+
+    function showItemTooltip(item) {
+      AudioEngine.itemUse();
+      document.getElementById('tooltipItemIcon').textContent = item.icon;
+      document.getElementById('tooltipItemName').textContent = item.name;
+      document.getElementById('tooltipItemDesc').textContent = item.desc;
+      toggleModal('itemTooltipModal', true);
+    }
+
+    function renderHearts(containerId, currentHp, maxHp) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      for (let i = 0; i < maxHp; i++) {
+        const span = document.createElement('span');
+        if (i < currentHp) {
+          span.className = 'text-xs text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.65)] transition-transform duration-200 scale-100';
+          span.textContent = '❤️';
+        } else {
+          span.className = 'text-xs opacity-35 transition-transform duration-200 scale-90';
+          span.textContent = '🖤';
+        }
+        container.appendChild(span);
+      }
+    }
+
+    /**
+     * 8. PLAYER ITEM USAGE LOGIC
+     */
+    function usePlayerItem(slotIndex) {
+      const m = AppState.match;
+      const me = getSelfPlayer();
+      const activeP = getCurrentTurnPlayer();
+      if (!activeP || !activeP.isSelf || m.isBusy) return;
+
+      const itemKey = me.items[slotIndex];
+      if (!itemKey) return;
+
+      if (itemKey === 'glass') {
+        me.items.splice(slotIndex, 1);
+        m.itemsUsedCount++;
+        AudioEngine.itemUse();
+        const nextShell = m.chamber[0];
+        const box = document.getElementById('peekResultBox');
+        if (nextShell === 'live') {
+          box.className = 'my-4 py-4 px-3 rounded-2xl border border-red-500 bg-red-500/15 text-red-400 font-black text-lg flex flex-col items-center gap-2';
+          box.innerHTML = `${createShellSVG('live', 'w-9 h-16')}<span>🔴 رصاصة حية (LIVE)</span>`;
+        } else {
+          box.className = 'my-4 py-4 px-3 rounded-2xl border border-sky-500 bg-sky-500/15 text-sky-400 font-black text-lg flex flex-col items-center gap-2';
+          box.innerHTML = `${createShellSVG('blank', 'w-9 h-16')}<span>⚪ رصاصة فارغة (BLANK)</span>`;
+        }
+        toggleModal('peekModal', true);
+        setActionBanner('🔍 استخدمت العدسة المكبرة لفحص بيت النار');
+      }
+      else if (itemKey === 'saw') {
+        if (m.doubleDamage) {
+          setActionBanner('⚠️ المنشار مفعّل بالفعل لهذه الطلقة!', 'gold');
+          return;
+        }
+        me.items.splice(slotIndex, 1);
+        m.itemsUsedCount++;
+        AudioEngine.sawSound();
+        m.doubleDamage = true;
+        updateShotgunBarrelVisual(true);
+        setActionBanner('🪚 تم قص الفوهة! الطلقة القادمة ستسبب ضرر x2', 'danger');
+      }
+      else if (itemKey === 'drink') {
+        me.items.splice(slotIndex, 1);
+        m.itemsUsedCount++;
+        AudioEngine.rack();
+        const ejected = m.chamber.shift();
+        triggerShellEjectAnimation(ejected);
+        const label = ejected === 'live' ? 'حية 🔴' : 'فارغة ⚪';
+        setActionBanner(`🥤 شربت الطاقة وأخرجت رصاصة (${label})`, ejected === 'live' ? 'danger' : 'safe');
+
+        if (m.chamber.length === 0) {
+          renderGameUI();
+          setTimeout(() => {
+            m.round++;
+            startNewRound();
+          }, 1200);
+          return;
+        }
+      }
+      else if (itemKey === 'cuffs') {
+        ensureValidSelectedTarget();
+        const targetOpp = m.players.find(p => p.id === m.selectedTargetId);
+        if (!targetOpp || targetOpp.cuffed) {
+          setActionBanner('⚠️ الهدف المحدد مقيد بالفعل أو غير صالح!', 'gold');
+          return;
+        }
+        me.items.splice(slotIndex, 1);
+        m.itemsUsedCount++;
+        AudioEngine.itemUse();
+        targetOpp.cuffed = true;
+        setActionBanner(`⛓️ قمت بتقييد ${targetOpp.name}! سيتخطى دوره القادم`, 'gold');
+      }
+      else if (itemKey === 'smoke' || itemKey === 'paracetamol') {
+        const playerMaxHp = me.maxHp || m.maxHp || 5;
+        if (me.hp >= playerMaxHp) {
+          setActionBanner('⚠️ صحتك ممتلئة بالفعل (5/5)!', 'gold');
+          return;
+        }
+        me.items.splice(slotIndex, 1);
+        m.itemsUsedCount++;
+        AudioEngine.healSound();
+        me.hp = Math.min(playerMaxHp, me.hp + 1);
+        showFloatingHpChange('+1 ❤️', false, 'bottom');
+        setActionBanner(`💊 تناولت البراسيتول واستعدت +1 قلب (${me.hp}/${playerMaxHp})!`, 'safe');
+      }
+
+      renderGameUI();
+    }
+
+    function triggerShellEjectAnimation(type) {
+      const wrapper = document.getElementById('ejectedShellVisual');
+      const body = document.getElementById('ejectedShellBody');
+      body.className = 'w-6 h-11';
+      body.innerHTML = createShellSVG(type, 'w-6 h-11');
+
+      wrapper.classList.remove('hidden', 'shell-ejecting');
+      void wrapper.offsetWidth;
+      wrapper.classList.add('shell-ejecting');
+      setTimeout(() => wrapper.classList.add('hidden'), 800);
+    }
+
+    /**
+     * 9. MULTIPLAYER SHOOTING & TURN RESOLUTION WITH SHOTGUN AIM + BLOOD ANIMATION
+     */
+    function handlePlayerShoot(mode) {
+      const m = AppState.match;
+      const activeP = getCurrentTurnPlayer();
+      if (!activeP || !activeP.isSelf || m.isBusy) return;
+
+      if (mode === 'self') {
+        executeShot(activeP.id, activeP.id);
+      } else {
+        ensureValidSelectedTarget();
+        if (!m.selectedTargetId) return;
+        executeShot(activeP.id, m.selectedTargetId);
+      }
+    }
+
+    function executeShot(shooterId, targetId) {
+      const m = AppState.match;
+      const shooter = m.players.find(p => p.id === shooterId);
+      const target = m.players.find(p => p.id === targetId);
+      if (!shooter || !target) return;
+
+      m.isBusy = true;
+      stopTurnTimer();
+      renderGameUI();
+
+      // Move and aim shotgun directly toward the target
+      aimShotgunAtTarget(target, false);
+
+      const isSelfShot = shooter.id === target.id;
+      const targetNameText = isSelfShot ? 'نفسه' : target.name;
+      setActionBanner(`${shooter.name} يتجه ويصوّب نحو ${targetNameText}...`, 'neutral', true);
+
+      setTimeout(() => {
+        aimShotgunAtTarget(target, true);
+        const shell = m.chamber.shift();
+        const damage = m.doubleDamage ? 2 : 1;
+
+        m.doubleDamage = false;
+        updateShotgunBarrelVisual(false);
+
+        if (shell === 'live') {
+          AudioEngine.liveBlast();
+          triggerShellEjectAnimation('live');
+          const flash = document.getElementById('muzzleFlash');
+          flash.classList.remove('flash-active');
+          void flash.offsetWidth;
+          flash.classList.add('flash-active');
+
+          const frame = document.getElementById('appFrame');
+          frame.classList.remove('shake-screen');
+          void frame.offsetWidth;
+          frame.classList.add('shake-screen');
+
+          target.hp = Math.max(0, Number(target.hp) - damage);
+          if (target.hp <= 0) {
+            target.hp = 0;
+            target.eliminated = true;
+          }
+          triggerBloodEffect(target, damage);
+          showFloatingHpChange(`-${damage} ❤️`, true, target.isSelf ? 'bottom' : 'top');
+          const elimText = target.hp === 0 ? ` (تم إقصاء ${target.name} 💀)` : '';
+          setActionBanner(`💥 طلق حي! دماء تسيل من ${targetNameText} (-${damage} ❤️)${elimText}`, 'danger', true);
+        } else {
+          AudioEngine.blankClick();
+          triggerShellEjectAnimation('blank');
+          setActionBanner(`💨 *تك!* رصاصة فارغة (Blank) على ${targetNameText}!`, 'safe', true);
+        }
+
+        ensureValidSelectedTarget();
+        renderGameUI();
+
+        setTimeout(() => {
+          resetShotgunAim();
+
+          const me = getSelfPlayer();
+          const aliveOpps = getAliveOpponents();
+
+          if (me.hp <= 0) {
+            endMatch(false);
+            return;
+          }
+          if (aliveOpps.length === 0) {
+            endMatch(true);
+            return;
+          }
+
+          const keepTurn = (isSelfShot && shell === 'blank' && shooter.hp > 0);
+          if (keepTurn) {
+            setActionBanner(`🔥 ${shooter.name} أطلق فارغة على نفسه واحتفظ بدوره!`, 'gold', true);
+          }
+
+          if (m.chamber.length === 0) {
+            if (!keepTurn) {
+              advanceTurnIndex();
+            }
+            setActionBanner('🔄 انتهت ذخيرة الجولة! جاري إعادة الحشو...', 'gold', true);
+            setTimeout(() => {
+              m.round++;
+              startNewRound();
+            }, 1300);
+            return;
+          }
+
+          if (!keepTurn) {
+            advanceTurnIndex();
+          }
+
+          m.isBusy = false;
+          startTurnTimer();
+          renderGameUI();
+
+          const nextPlayer = getCurrentTurnPlayer();
+          if (nextPlayer && !nextPlayer.isSelf) {
+            setTimeout(runOpponentAI, 650);
+          } else if (nextPlayer && nextPlayer.isSelf) {
+            const targetObj = m.players.find(p => p.id === m.selectedTargetId);
+            aimShotgunAtTarget(targetObj, false);
+          }
+        }, 1150);
+      }, 650);
+    }
+
+    /**
+     * 10. MULTIPLAYER BOT AI LOGIC (PACED >= 360ms BETWEEN BOT NOTICES)
+     */
+    function runOpponentAI() {
+      const m = AppState.match;
+      const bot = getCurrentTurnPlayer();
+      if (!m.active || !bot || bot.isSelf || bot.hp <= 0 || m.isBusy) return;
+
+      const liveLeft = m.chamber.filter(s => s === 'live').length;
+      const blankLeft = m.chamber.filter(s => s === 'blank').length;
+      let knownNextShell = null;
+
+      // 1. Heal if low HP and has Paracetamol
+      const smokeIdx = bot.items.indexOf('smoke');
+      const botMaxHp = bot.maxHp || m.maxHp || 5;
+      if (smokeIdx !== -1 && bot.hp < botMaxHp) {
+        bot.items.splice(smokeIdx, 1);
+        AudioEngine.healSound();
+        bot.hp = Math.min(botMaxHp, bot.hp + 1);
+        showFloatingHpChange('+1 ❤️', false, 'top');
+        setActionBanner(`💊 ${bot.name} تناول البراسيتول واستعاد +1 قلب (${bot.hp}/${botMaxHp})`, 'gold', true);
+        renderGameUI();
+        setTimeout(runOpponentAI, 520);
+        return;
+      }
+
+      // 2. Use Magnifying Glass if uncertain
+      const glassIdx = bot.items.indexOf('glass');
+      if (glassIdx !== -1 && liveLeft > 0 && blankLeft > 0) {
+        bot.items.splice(glassIdx, 1);
+        AudioEngine.itemUse();
+        knownNextShell = m.chamber[0];
+        setActionBanner(`🔍 ${bot.name} استخدم العدسة المكبرة لفحص الطلقة...`, 'gold', true);
+        renderGameUI();
+        setTimeout(() => decideAIShot(bot, knownNextShell, liveLeft, blankLeft), 520);
+        return;
+      }
+
+      // 3. Use Handcuffs on a valid alive opponent
+      const cuffsIdx = bot.items.indexOf('cuffs');
+      const cuffCandidates = getAlivePlayers().filter(p => p.id !== bot.id && !p.cuffed);
+      if (cuffsIdx !== -1 && cuffCandidates.length > 0 && m.chamber.length > 1) {
+        bot.items.splice(cuffsIdx, 1);
+        AudioEngine.itemUse();
+        const victim = cuffCandidates[Math.floor(Math.random() * cuffCandidates.length)];
+        victim.cuffed = true;
+        setActionBanner(`⛓️ ${bot.name} قيّد ${victim.name}! سيتخطى دوره القادم`, 'danger', true);
+        renderGameUI();
+        setTimeout(runOpponentAI, 520);
+        return;
+      }
+
+      decideAIShot(bot, knownNextShell, liveLeft, blankLeft);
+    }
+
+    function decideAIShot(bot, knownNextShell, liveLeft, blankLeft) {
+      const m = AppState.match;
+      if (!m.active || getCurrentTurnPlayer().id !== bot.id) return;
+
+      const shootOther = knownNextShell
+        ? knownNextShell === 'live'
+        : liveLeft >= blankLeft;
+
+      if (!shootOther) {
+        executeShot(bot.id, bot.id);
+        return;
+      }
+
+      const targets = getAlivePlayers().filter(p => p.id !== bot.id);
+      if (targets.length === 0) return;
+      const chosenTarget = targets[Math.floor(Math.random() * targets.length)];
+
+      // Aim shotgun toward chosen target first so the player sees the shotgun move
+      aimShotgunAtTarget(chosenTarget, false);
+
+      // Use Hand Saw if confident
+      const sawIdx = bot.items.indexOf('saw');
+      if (sawIdx !== -1 && !m.doubleDamage && (knownNextShell === 'live' || liveLeft > blankLeft)) {
+        bot.items.splice(sawIdx, 1);
+        AudioEngine.sawSound();
+        m.doubleDamage = true;
+        updateShotgunBarrelVisual(true);
+        setActionBanner(`🪚 ${bot.name} قصّ فوهة البندقية بالمنشار نحو ${chosenTarget.name}!`, 'danger', true);
+        renderGameUI();
+        setTimeout(() => {
+          executeShot(bot.id, chosenTarget.id);
+        }, 520);
+        return;
+      }
+
+      setActionBanner(`🎯 ${bot.name} يوجّه البندقية نحو ${chosenTarget.name}...`, 'neutral', true);
+      setTimeout(() => {
+        executeShot(bot.id, chosenTarget.id);
+      }, 450);
+    }
+
+    /**
+     * 11. ENDGAME & CLEANUP
+     */
+    function endMatch(playerWon) {
+      const m = AppState.match;
+      m.active = false;
+      m.isBusy = false;
+      stopTurnTimer();
+      resetShotgunAim();
+
+      document.getElementById('statRounds').textContent = m.round;
+      document.getElementById('statItems').textContent = m.itemsUsedCount;
+
+      if (playerWon) {
+        AudioEngine.win();
+        AppState.tickets += 1;
+        updateTicketsUI();
+        document.getElementById('endIcon').textContent = '🏆';
+        document.getElementById('endTitle').textContent = 'انتصار ساحق!';
+        document.getElementById('endTitle').className = 'text-2xl font-black text-emerald-400';
+        document.getElementById('endSubtitle').textContent = 'بقيت الناجي الأخير على الطاولة!';
+        document.getElementById('statReward').textContent = '+1 تذكرة 🎟️';
+      } else {
+        AudioEngine.lose();
+        document.getElementById('endIcon').textContent = '💀';
+        document.getElementById('endTitle').textContent = 'تم إقصاؤك!';
+        document.getElementById('endTitle').className = 'text-2xl font-black text-red-500';
+        document.getElementById('endSubtitle').textContent = 'حظاً أوفر في التحدي القادم';
+        document.getElementById('statReward').textContent = '0 تذاكر';
+      }
+
+      toggleModal('gameOverModal', true);
+    }
+
+    function restartSameMode() {
+      toggleModal('gameOverModal', false);
+      if (AppState.currentMode === 'bot') {
+        confirmStartBotMatch();
+      } else {
+        if (AppState.tickets > 0) {
+          AppState.tickets--;
+          updateTicketsUI();
+          initMatch([...AppState.lobbySeats]);
+        } else {
+          backToMenuFromEnd();
+          openRewardModal('ticket');
+        }
+      }
+    }
+
+    function backToMenuFromEnd() {
+      toggleModal('gameOverModal', false);
+      showScreen('screen-menu');
+    }
+
+    function confirmLeaveGame() {
+      AppState.match.active = false;
+      stopTurnTimer();
+      showScreen('screen-menu');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateTicketsUI();
+    });
+  </script>
+</body>
+</html>
