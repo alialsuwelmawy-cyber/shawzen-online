@@ -3,12 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Shawzen Online | لعبة الشوتكن والتحدي</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>شوتكن أونلاين | لعبة الروليت التكتيكية متعددة اللاعبين</title>
+
+  <!-- Tailwind CSS v4 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Socket.IO Client CDN -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <!-- Cairo Arabic Gaming Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
     * {
       font-family: 'Cairo', sans-serif;
@@ -18,355 +25,286 @@
     }
 
     body {
-      background: radial-gradient(circle at center, #18181b 0%, #09090b 100%);
+      background-color: #09090b;
       color: #f4f4f5;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow-x: hidden;
     }
 
-    .phone-frame {
-      width: 100%;
-      max-width: 430px;
-      height: 100vh;
-      max-height: 880px;
-      background: linear-gradient(180deg, #121316 0%, #0b0c0e 100%);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    /* Tactical Table Felt Gradient */
+    .arena-bg {
+      background:
+        radial-gradient(circle at 50% 42%, rgba(220, 38, 38, 0.14) 0%, rgba(9, 9, 11, 0.96) 72%),
+        linear-gradient(180deg, #121216 0%, #09090b 100%);
     }
 
-    @media (min-width: 480px) {
-      .phone-frame {
-        height: 92vh;
-        border-radius: 38px;
-        border: 6px solid #27272a;
-      }
+    /* Screen Shake Animation on Live Shot */
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      15% { transform: translate(-8px, 6px) rotate(-1deg); }
+      30% { transform: translate(8px, -6px) rotate(1deg); }
+      45% { transform: translate(-6px, -4px) rotate(-0.8deg); }
+      60% { transform: translate(6px, 5px) rotate(0.8deg); }
+      75% { transform: translate(-3px, 3px) rotate(0deg); }
+    }
+    .shake-screen {
+      animation: screenShake 0.48s cubic-bezier(.36,.07,.19,.97) both;
     }
 
-    ::-webkit-scrollbar {
-      width: 4px;
+    /* Muzzle Flash Pulse */
+    @keyframes muzzleFlash {
+      0% { opacity: 1; transform: scale(0.7); }
+      40% { opacity: 0.95; transform: scale(1.35); }
+      100% { opacity: 0; transform: scale(1.7); }
     }
-    ::-webkit-scrollbar-thumb {
-      background: #3f3f46;
-      border-radius: 99px;
+    .flash-active {
+      animation: muzzleFlash 0.35s ease-out forwards;
     }
 
+    /* Shell Ejection Arc */
+    @keyframes ejectShell {
+      0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+      50% { opacity: 1; transform: translate(-55px, -45px) rotate(-160deg) scale(1.15); }
+      100% { opacity: 0; transform: translate(-95px, 35px) rotate(-320deg) scale(0.85); }
+    }
+    .shell-ejecting {
+      animation: ejectShell 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Floating Damage / Heal Indicator */
+    @keyframes floatUpFade {
+      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.8); }
+      20% { opacity: 1; transform: translate(-50%, -6px) scale(1.12); }
+      80% { opacity: 1; transform: translate(-50%, -22px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -34px) scale(0.95); }
+    }
+    .hp-float-badge {
+      animation: floatUpFade 1.1s ease-out forwards;
+    }
+
+    /* Blood Vignette Pulse when Player is Shot */
+    @keyframes bloodPulseVignette {
+      0% { opacity: 0; }
+      18% { opacity: 0.95; }
+      60% { opacity: 0.72; }
+      100% { opacity: 0; }
+    }
+    .blood-overlay-active {
+      animation: bloodPulseVignette 1.15s ease-out forwards;
+    }
+
+    /* Dripping Blood Drop Animation */
+    @keyframes bloodDrip {
+      0% { transform: translateY(-6px) scaleY(0.7); opacity: 0.95; }
+      60% { transform: translateY(10px) scaleY(1.2); opacity: 0.9; }
+      100% { transform: translateY(20px) scaleY(0.9); opacity: 0; }
+    }
+    .blood-drip-drop {
+      animation: bloodDrip 1.1s ease-in forwards;
+    }
+
+    /* Weapon Smooth Aiming & Recoil Transition */
     .shotgun-wrapper {
-      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+      transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
       transform-origin: center center;
     }
 
-    @keyframes screenShake {
-      0%, 100% { transform: translate(0, 0); }
-      15% { transform: translate(-8px, 6px); }
-      30% { transform: translate(8px, -6px); }
-      45% { transform: translate(-6px, -4px); }
-      60% { transform: translate(6px, 4px); }
-      75% { transform: translate(-3px, 2px); }
-    }
-
-    .shake-screen {
-      animation: screenShake 0.42s ease-in-out;
-    }
-
-    @keyframes muzzleFlash {
-      0% { opacity: 1; transform: scale(0.55); }
-      45% { opacity: 0.98; transform: scale(1.4); }
-      100% { opacity: 0; transform: scale(1.7); }
-    }
-
-    .flash-active {
-      animation: muzzleFlash 0.32s ease-out forwards;
-    }
-
-    @keyframes ejectShell {
-      0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-      50% { opacity: 1; transform: translate(65px, -45px) rotate(190deg) scale(1.1); }
-      100% { opacity: 0; transform: translate(110px, 30px) rotate(380deg) scale(0.7); }
-    }
-
-    .shell-ejecting {
-      animation: ejectShell 0.75s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-    }
-
-    @keyframes bloodDripFall {
-      0% { opacity: 0.95; transform: translateY(-4px) scaleY(0.4); }
-      35% { opacity: 1; transform: translateY(8px) scaleY(1.25); }
-      100% { opacity: 0; transform: translateY(34px) scaleY(1.65); }
-    }
-
-    @keyframes bloodSplatterPulse {
-      0% { opacity: 0; transform: scale(0.75); }
-      25% { opacity: 0.92; transform: scale(1.06); }
-      100% { opacity: 0; transform: scale(1.18); }
-    }
-
-    .blood-overlay-active {
-      animation: bloodSplatterPulse 1.15s ease-out forwards;
-    }
-
-    .blood-drip-drop {
-      animation: bloodDripFall 1.05s cubic-bezier(0.4, 0, 0.8, 0.6) forwards;
-    }
-
+    /* Subtle Glow Cards */
     .tactical-card {
       background: rgba(24, 24, 27, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(10px);
+      border: 1px solid rgba(63, 63, 70, 0.65);
     }
 
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #18181b; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 99px; }
+
+    /* Button Press Feel */
     .btn-3d {
-      transition: all 0.15s ease;
-      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55);
+      transition: transform 0.1s ease, filter 0.15s ease;
       cursor: pointer;
     }
     .btn-3d:active:not(:disabled) {
-      transform: translateY(3px);
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
-    }
-
-    .table-felt {
-      background: radial-gradient(ellipse at center, #1e2229 0%, #111317 75%, #090a0d 100%);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
-    }
-
-    @keyframes floatHpPopup {
-      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
-      20% { opacity: 1; transform: translate(-50%, -6px) scale(1.15); }
-      80% { opacity: 1; transform: translate(-50%, -22px) scale(1); }
-      100% { opacity: 0; transform: translate(-50%, -34px) scale(0.9); }
-    }
-
-    .hp-float-badge {
-      animation: floatHpPopup 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      transform: translateY(2px) scale(0.98);
     }
   </style>
 </head>
-<body>
+<body class="min-h-screen flex items-center justify-center bg-zinc-950 p-0 sm:p-4">
 
-  <!-- Mobile App Container -->
-  <div id="appFrame" class="phone-frame">
+  <!-- MAIN APP CONTAINER (Responsive Mobile-First Game Viewport) -->
+  <div id="appFrame" class="relative w-full max-w-md h-[100dvh] sm:h-[850px] sm:rounded-3xl overflow-hidden border border-zinc-800 shadow-2xl arena-bg flex flex-col justify-between">
 
-    <!-- Player Hit Blood Vignette Overlay -->
+    <!-- SELF BLOOD HIT VIGNETTE OVERLAY -->
     <div id="selfBloodVignette" class="hidden pointer-events-none absolute inset-0 z-30"
-      style="background: radial-gradient(circle at center, transparent 42%, rgba(153, 27, 27, 0.45) 78%, rgba(127, 29, 29, 0.85) 100%);">
+      style="background: radial-gradient(circle at center, transparent 42%, rgba(185, 28, 28, 0.72) 85%, rgba(127, 29, 29, 0.95) 100%); box-shadow: inset 0 0 65px rgba(220, 38, 38, 0.9);">
     </div>
 
-    <!-- Top Status Bar -->
-    <header class="px-4 pt-3 pb-2 flex items-center justify-between border-b border-zinc-800/80 bg-zinc-950/90 z-30">
+    <!-- ==================== TOP GLOBAL HEADER ==================== -->
+    <header class="w-full px-3.5 py-2.5 flex items-center justify-between bg-zinc-950/85 border-b border-zinc-800/80 z-20">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 flex items-center justify-center shadow-lg shadow-red-900/30">
-          <span class="text-base">🔫</span>
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 flex items-center justify-center shadow-lg shadow-red-900/40 font-black text-base">
+          🎯
         </div>
         <div>
-          <h1 class="text-sm font-black tracking-wide text-white leading-none">SHAWZEN <span class="text-red-500">ONLINE</span></h1>
-          <p id="serverStatusText" class="text-[10px] text-amber-400 font-semibold">جاري الاتصال بالسيرفر...</p>
+          <h1 class="text-sm font-black tracking-wide text-white leading-none">شوتكن أونلاين</h1>
+          <span id="serverStatusText" class="text-[10px] text-amber-400 font-semibold">جاري الاتصال بالسيرفر...</span>
         </div>
       </div>
 
+      <!-- Tickets & Sound Controls -->
       <div class="flex items-center gap-1.5">
-        <button type="button" onclick="openArmoryModal('weapons')" class="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 border border-purple-500/40 px-2.5 py-1 rounded-full transition cursor-pointer" title="مستودع الأسلحة والمظاهر">
-          <span class="text-xs">🎨</span>
-          <span class="text-[10px] font-extrabold text-purple-300">المظاهر</span>
+        <button type="button" onclick="openArmoryModal('weapons')" title="الأسلحة والمظاهر" class="px-2 py-1 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 text-xs font-extrabold flex items-center gap-1 cursor-pointer">
+          <span>🔫</span>
         </button>
 
-        <button type="button" onclick="openRewardModal('ticket')" class="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-amber-500/30 px-2.5 py-1 rounded-full transition cursor-pointer">
-          <span class="text-amber-400 text-xs">🎟️</span>
-          <span id="ticketCount" class="text-xs font-extrabold text-amber-300">5</span>
-          <span class="w-4 h-4 rounded-full bg-amber-500 text-zinc-950 text-[11px] font-black flex items-center justify-center">+</span>
-        </button>
+        <div class="flex items-center gap-1 bg-zinc-900 border border-amber-500/40 px-2.5 py-1 rounded-full shadow-inner">
+          <span class="text-xs">🎟️</span>
+          <span id="ticketCount" class="text-xs font-extrabold text-amber-400">5</span>
+          <button type="button" onclick="openRewardModal('ticket')" title="احصل على تذاكر مجانية" class="mr-0.5 w-4 h-4 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center leading-none cursor-pointer">
+            +
+          </button>
+        </div>
 
-        <button type="button" id="muteBtn" onclick="toggleMute()" class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition cursor-pointer" title="كتم / تشغيل الصوت">
+        <button type="button" id="muteBtn" onclick="toggleMute()" class="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-xs hover:bg-zinc-800 cursor-pointer" title="كتم / تشغيل الصوت">
           🔊
         </button>
       </div>
     </header>
 
-    <!-- ==================== SCREEN 1: MAIN MENU ==================== -->
+    <!-- ==================== SCREEN 1: MAIN LOBBY MENU ==================== -->
     <main id="screen-menu" class="flex-1 flex flex-col justify-between p-4 overflow-y-auto">
       <!-- Hero Banner -->
-      <div class="relative rounded-3xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-4 text-center shadow-xl">
-        <div class="absolute -top-12 -right-12 w-36 h-36 bg-red-600/15 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-        <span id="onlineStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-bold mb-1.5">
+      <div class="mt-1 text-center">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-bold mb-2">
           <span id="onlineStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-          <span id="onlineStatusLabel">الاتصال بالسيرفر • 5 أسلحة • 6 مظاهر • 10 أدوات</span>
-        </span>
-
-        <h2 class="text-xl font-black text-white">الشوتكن والتحدي</h2>
-        <p class="text-[11px] text-zinc-400 leading-relaxed max-w-xs mx-auto mt-0.5">
-          جهّز سلاحك المفضل بلمسة حضارية، اخفِ وسادتك بذكاء، واسرق أدوات خصومك للبقاء حياً!
+          <span id="onlineStatusLabel">جاري الاتصال بالسيرفر • 5 أسلحة • 6 مظاهر • 10 أدوات</span>
+        </div>
+        <h2 class="text-2xl font-black text-white leading-tight">
+          رصاصة واحدة تفصل بين <span class="text-red-500">البقاء</span> و<span class="text-amber-400">الإقصاء</span>
+        </h2>
+        <p class="text-xs text-zinc-400 mt-1 max-w-xs mx-auto leading-relaxed">
+          اختر سلاحك ومظهرك المفضل ونافس حتى 6 لاعبين بذكاء تكتيكي.
         </p>
+      </div>
 
-        <!-- Current Equipped Loadout Pill -->
-        <div class="mt-2.5 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/90 border border-purple-500/30">
-          <span class="text-[10px] text-zinc-400 font-bold">تجهيزك الحالي:</span>
-          <span id="menuEquippedBadge" class="text-[11px] font-black text-amber-300">شوتكن • الفولاذ الكلاسيكي</span>
+      <!-- Player Win Stats & Streak Card -->
+      <div class="my-2 p-2.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 grid grid-cols-4 gap-1 text-center">
+        <div class="p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+          <div class="text-[10px] text-zinc-400 font-bold">الانتصارات</div>
+          <div id="statMenuWins" class="text-sm font-black text-emerald-400 mt-0.5">0</div>
         </div>
-
-        <!-- Career Stats Bar -->
-        <div class="mt-2.5 grid grid-cols-4 gap-1.5 bg-zinc-900/90 border border-zinc-800 p-2 rounded-2xl">
-          <div class="text-center">
-            <div id="statMenuWins" class="text-sm font-black text-emerald-400">0</div>
-            <div class="text-[9px] text-zinc-400 font-bold">الانتصارات</div>
-          </div>
-          <div class="text-center border-r border-zinc-800">
-            <div id="statMenuMatches" class="text-sm font-black text-white">0</div>
-            <div class="text-[9px] text-zinc-400 font-bold">المباريات</div>
-          </div>
-          <div class="text-center border-r border-zinc-800">
-            <div id="statMenuWinRate" class="text-sm font-black text-amber-400">0%</div>
-            <div class="text-[9px] text-zinc-400 font-bold">نسبة الفوز</div>
-          </div>
-          <div class="text-center border-r border-zinc-800">
-            <div id="statMenuStreak" class="text-sm font-black text-orange-400">0 🔥</div>
-            <div class="text-[9px] text-zinc-400 font-bold">التسلسل</div>
-          </div>
+        <div class="p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+          <div class="text-[10px] text-zinc-400 font-bold">المباريات</div>
+          <div id="statMenuMatches" class="text-sm font-black text-white mt-0.5">0</div>
         </div>
-
-        <!-- Mini Visual Shells -->
-        <div class="mt-2.5 flex items-center justify-center gap-2.5">
-          <div class="flex items-center gap-1.5 bg-zinc-900/90 border border-red-500/35 px-2.5 py-1 rounded-xl">
-            <svg viewBox="0 0 24 44" class="w-3.5 h-6 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]">
-              <defs>
-                <linearGradient id="miniLiveHull" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="#991b1b"/><stop offset="40%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/>
-                </linearGradient>
-                <linearGradient id="miniBrass" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="#b45309"/><stop offset="45%" stop-color="#fde047"/><stop offset="100%" stop-color="#78350f"/>
-                </linearGradient>
-              </defs>
-              <rect x="4" y="2" width="16" height="29" rx="3" fill="url(#miniLiveHull)" stroke="#fca5a5" stroke-width="0.8"/>
-              <line x1="4" y1="9" x2="20" y2="9" stroke="#7f1d1d" stroke-width="1"/>
-              <line x1="4" y1="15" x2="20" y2="15" stroke="#7f1d1d" stroke-width="1"/>
-              <rect x="3" y="31" width="18" height="10" rx="1.5" fill="url(#miniBrass)" stroke="#fef08a" stroke-width="0.6"/>
-              <rect x="2" y="40" width="20" height="2.5" rx="1" fill="#eab308"/>
-            </svg>
-            <span class="text-[11px] font-extrabold text-red-300">رصاصة حية</span>
-          </div>
-          <div class="flex items-center gap-1.5 bg-zinc-900/90 border border-sky-500/35 px-2.5 py-1 rounded-xl">
-            <svg viewBox="0 0 24 44" class="w-3.5 h-6 drop-shadow-[0_0_6px_rgba(56,189,248,0.5)]">
-              <defs>
-                <linearGradient id="miniBlankHull" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="#0369a1"/><stop offset="45%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#0c4a6e"/>
-                </linearGradient>
-                <linearGradient id="miniSteel" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stop-color="#52525b"/><stop offset="45%" stop-color="#e4e4e7"/><stop offset="100%" stop-color="#3f3f46"/>
-                </linearGradient>
-              </defs>
-              <rect x="4" y="2" width="16" height="29" rx="3" fill="url(#miniBlankHull)" fill-opacity="0.85" stroke="#bae6fd" stroke-width="0.8"/>
-              <circle cx="12" cy="16" r="3" fill="none" stroke="#e0f2fe" stroke-width="1" stroke-dasharray="2 1"/>
-              <rect x="3" y="31" width="18" height="10" rx="1.5" fill="url(#miniSteel)" stroke="#f4f4f5" stroke-width="0.6"/>
-              <rect x="2" y="40" width="20" height="2.5" rx="1" fill="#a1a1aa"/>
-            </svg>
-            <span class="text-[11px] font-bold text-sky-300">رصاصة فارغة</span>
-          </div>
+        <div class="p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+          <div class="text-[10px] text-zinc-400 font-bold">نسبة الفوز</div>
+          <div id="statMenuWinRate" class="text-sm font-black text-sky-400 mt-0.5">0%</div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80">
+          <div class="text-[10px] text-zinc-400 font-bold">السلسلة</div>
+          <div id="statMenuStreak" class="text-sm font-black text-amber-400 mt-0.5">0 🔥</div>
         </div>
       </div>
 
-      <!-- Primary Game Modes -->
-      <div class="space-y-2 my-2">
-        <button type="button" onclick="startQuickMatch()" class="btn-3d w-full rounded-2xl bg-gradient-to-l from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 p-3.5 flex items-center justify-between text-right border border-red-400/30">
+      <!-- Mode Cards -->
+      <div class="space-y-2.5 my-1">
+        <!-- Quick Match -->
+        <button type="button" onclick="startQuickMatch()" class="btn-3d w-full p-3.5 rounded-2xl bg-gradient-to-l from-red-700 via-red-600 to-rose-700 hover:brightness-110 shadow-lg shadow-red-950/60 border border-red-400/30 flex items-center justify-between text-right">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-black/30 flex items-center justify-center text-xl">⚡</div>
+            <div class="w-11 h-11 rounded-xl bg-black/30 flex items-center justify-center text-2xl">⚡</div>
             <div>
-              <div class="text-sm font-black text-white">لعب عشوائي (Quick Match)</div>
-              <div class="text-[10px] text-red-100/80">مطابقة فورية ضد لاعبين أونلاين • 1 🎟️</div>
+              <div class="text-sm font-black text-white">لعب سريع أونلاين</div>
+              <div class="text-[11px] text-red-100/85">مطابقة فورية مع لاعبين • التكلفة: 1 🎟️</div>
             </div>
           </div>
-          <span class="text-white/80 text-base font-bold">←</span>
+          <span class="text-lg font-black text-white/80">←</span>
         </button>
 
+        <!-- Private Room Create / Join -->
         <div class="grid grid-cols-2 gap-2.5">
-          <button type="button" onclick="openCreateRoom()" class="btn-3d rounded-2xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 p-3 text-right flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg mb-1.5">🔑</div>
-            <div>
-              <div class="text-xs font-extrabold text-white">إنشاء غرفة خاصة</div>
-              <div class="text-[10px] text-zinc-400 mt-0.5">كود دعوة + تحكم بالمؤقت</div>
-            </div>
+          <button type="button" onclick="openCreateRoom()" class="btn-3d p-3 rounded-2xl tactical-card hover:border-amber-500/50 flex flex-col items-start text-right">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-lg mb-1.5">🔑</div>
+            <div class="text-xs font-extrabold text-white">إنشاء غرفة خاصة</div>
+            <div class="text-[10px] text-zinc-400 mt-0.5">حتى 6 لاعبين معاً</div>
           </button>
 
-          <button type="button" onclick="openJoinRoom()" class="btn-3d rounded-2xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 p-3 text-right flex flex-col justify-between">
-            <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-lg mb-1.5">📲</div>
-            <div>
-              <div class="text-xs font-extrabold text-white">انضمام بكود</div>
-              <div class="text-[10px] text-zinc-400 mt-0.5">أدخل رمز غرفة صديقك</div>
-            </div>
+          <button type="button" onclick="openJoinRoom()" class="btn-3d p-3 rounded-2xl tactical-card hover:border-sky-500/50 flex flex-col items-start text-right">
+            <div class="w-9 h-9 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-lg mb-1.5">🚪</div>
+            <div class="text-xs font-extrabold text-white">انضمام برمز</div>
+            <div class="text-[10px] text-zinc-400 mt-0.5">أدخل كود غرفة صديقك</div>
           </button>
         </div>
 
-        <button type="button" onclick="openBotSetupModal()" class="btn-3d w-full rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/30 p-3 flex items-center justify-between text-right">
+        <!-- Practice vs AI Bots (1 to 5 Bots) -->
+        <button type="button" onclick="openBotSetupModal()" class="btn-3d w-full p-3 rounded-2xl tactical-card hover:border-emerald-500/50 flex items-center justify-between text-right">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-lg">🤖</div>
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl">🤖</div>
             <div>
-              <div class="text-sm font-extrabold text-emerald-300">اللعب ضد بوت</div>
-              <div class="text-[10px] text-zinc-400">اختر من 1 إلى 5 بوتات بأسلحة ومظاهر متنوعة • مجاني</div>
+              <div class="text-xs font-extrabold text-white">تدريب ضد البوتات (1 إلى 5 بوتات)</div>
+              <div class="text-[10px] text-zinc-400">مجاني بدون تذاكر • اختر عدد الخصوم بنفسك</div>
             </div>
           </div>
-          <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">مجاني</span>
+          <span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">مجاني</span>
+        </button>
+
+        <!-- Weapons & Skins Armory Button -->
+        <button type="button" onclick="openArmoryModal('weapons')" class="btn-3d w-full p-3 rounded-2xl bg-gradient-to-l from-purple-950/70 to-zinc-900 border border-purple-500/40 hover:border-purple-400 flex items-center justify-between text-right">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center text-xl">🔫</div>
+            <div>
+              <div class="text-xs font-extrabold text-white">مستودع الأسلحة والمظاهر (5 أسلحة × 6 مظاهر)</div>
+              <div class="text-[10px] text-purple-300/90">المُجهّز: <span id="menuEquippedBadge" class="font-bold">شوتكن • الفولاذ الكلاسيكي</span></div>
+            </div>
+          </div>
+          <span class="text-xs font-black text-purple-300">تخصيص ←</span>
         </button>
       </div>
 
-      <!-- Monetization & Rules Footer -->
-      <div class="space-y-2">
-        <button type="button" onclick="openRewardModal('ticket')" class="w-full rounded-2xl bg-gradient-to-l from-amber-500/15 via-zinc-900 to-zinc-900 border border-amber-500/30 p-2.5 flex items-center justify-between hover:border-amber-400/60 transition cursor-pointer">
-          <div class="flex items-center gap-2.5 text-right">
-            <span class="text-lg">🎬</span>
-            <div>
-              <div class="text-xs font-extrabold text-amber-300">شاهد إعلان واحصل على +3 تذاكر</div>
-              <div class="text-[10px] text-zinc-400">مكافأة فورية لفتح الأسلحة الخمسة والمظاهر الحضارية</div>
-            </div>
-          </div>
-          <span class="px-3 py-1 rounded-xl bg-amber-500 text-zinc-950 text-xs font-black">شاهد</span>
+      <!-- Bottom Quick Rules & Free Ticket Ad -->
+      <div class="pt-2 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+        <button type="button" onclick="toggleModal('rulesModal', true)" class="flex-1 py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-300 flex items-center justify-center gap-1.5 cursor-pointer">
+          <span>📖</span>
+          <span>الأدوات العشر والقوانين</span>
         </button>
 
-        <div class="flex gap-2">
-          <button type="button" onclick="toggleModal('rulesModal', true)" class="flex-1 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-[11px] font-bold text-zinc-300 hover:text-white transition cursor-pointer">
-            📖 شرح الأدوات العشر
-          </button>
-          <button type="button" onclick="openArmoryModal('weapons')" class="flex-1 py-2 rounded-xl bg-zinc-900 border border-purple-500/40 text-[11px] font-bold text-purple-300 hover:text-purple-200 transition cursor-pointer">
-            🔫 الأسلحة والمظاهر
-          </button>
-        </div>
+        <button type="button" onclick="openRewardModal('ticket')" class="flex-1 py-2.5 px-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-xs font-extrabold text-amber-300 flex items-center justify-center gap-1.5 cursor-pointer">
+          <span>🎬</span>
+          <span>تذاكر مجانية (+3)</span>
+        </button>
       </div>
     </main>
 
-    <!-- ==================== SCREEN 2: LOBBY / MATCHMAKING ==================== -->
-    <section id="screen-lobby" class="hidden flex-1 flex flex-col justify-between p-4 overflow-y-auto">
-      <div>
-        <button type="button" onclick="leaveOnlineLobby()" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 cursor-pointer">
-          → رجوع للقائمة
-        </button>
+    <!-- ==================== SCREEN 2: MULTIPLAYER WAITING ROOM (UP TO 6 SEATS) ==================== -->
+    <section id="screen-lobby" class="hidden flex-1 flex flex-col justify-between p-4 text-center overflow-y-auto">
+      <div class="mt-1">
+        <span id="lobbyBadge" class="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
+          غرفة خاصة أونلاين (حتى 6 لاعبين)
+        </span>
+        <h2 id="lobbyTitle" class="text-lg font-black text-white mt-2">غرفة التحدي الجماعي</h2>
+        <p id="lobbySubtitle" class="text-xs text-zinc-400 mt-0.5">شارك الرمز مع أصدقائك أو أضف بوتات لإكمال المقاعد</p>
+      </div>
 
-        <div class="mt-3 text-center">
-          <span id="lobbyBadge" class="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
-            غرفة خاصة (حتى 6 لاعبين)
-          </span>
-          <h2 id="lobbyTitle" class="text-lg font-black text-white mt-1.5">في انتظار اللاعبين...</h2>
-          <p id="lobbySubtitle" class="text-[11px] text-zinc-400 mt-0.5">شارك الرمز أو أضف بوتات لإكمال الطاولة (2 إلى 6 لاعبين)</p>
+      <!-- Room Code Display -->
+      <div id="roomCodeBox" class="my-2 p-3 rounded-2xl tactical-card border border-amber-500/40">
+        <div class="text-[11px] text-zinc-400 mb-1">رمز الغرفة (انقر للنسخ والمشاركة)</div>
+        <div class="flex items-center justify-center gap-2">
+          <span id="generatedRoomCode" class="text-2xl font-black tracking-widest text-amber-400 font-mono">SHW-842</span>
+          <button type="button" onclick="copyRoomCode()" class="px-2.5 py-1 rounded-xl bg-amber-500 text-zinc-950 font-extrabold text-xs hover:bg-amber-400 cursor-pointer">
+            نسخ 📋
+          </button>
         </div>
+        <div id="copyFeedback" class="text-[11px] text-emerald-400 font-bold mt-1 h-4"></div>
+      </div>
 
-        <div id="roomCodeBox" class="mt-3 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 text-center">
-          <div class="text-[10px] text-zinc-400 font-semibold mb-1">رمز الغرفة السري (Room Code)</div>
-          <div class="flex items-center justify-center gap-2">
-            <span id="generatedRoomCode" class="text-xl font-black tracking-[0.2em] text-amber-400 font-mono">SHW-842</span>
-            <button type="button" onclick="copyRoomCode()" class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-white border border-zinc-600 transition cursor-pointer">
-              نسخ 📋
-            </button>
+      <!-- Host Room Settings (Turn Timer + Bot Fill) -->
+      <div id="hostSettingsBox" class="mb-2 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-right space-y-2.5">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-extrabold text-zinc-300">⏱️ مدة الدور لكل لاعب:</span>
+            <span class="text-[10px] text-amber-400 font-bold">إعدادات المضيف</span>
           </div>
-          <div id="copyFeedback" class="text-[10px] text-emerald-400 font-bold mt-1 h-3.5"></div>
-        </div>
-
-        <div id="hostSettingsBox" class="mt-2.5 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 text-center">
-          <div class="text-[11px] text-zinc-400 font-bold mb-1.5">⏱️ مدة دور اللاعب الواحد (إعدادات المضيف):</div>
           <div class="grid grid-cols-3 gap-2">
             <button type="button" onclick="selectTurnDuration(30)" id="durBtn-30" class="py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs border border-amber-400 transition cursor-pointer">
               30 ثانية
@@ -380,77 +318,88 @@
           </div>
         </div>
 
-        <div class="mt-3 bg-zinc-900/60 border border-zinc-800 p-3 rounded-3xl">
-          <div class="flex items-center justify-between mb-2 px-1">
-            <span class="text-[11px] font-bold text-zinc-300">المقاعد (<span id="lobbyPlayerCount">1</span>/6)</span>
-            <div id="lobbyBotControls" class="flex items-center gap-1.5">
-              <button type="button" onclick="removeLobbyBot()" class="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[10px] font-bold text-zinc-300 border border-zinc-700 cursor-pointer">- إزالة</button>
-              <button type="button" onclick="addLobbyBot()" class="px-2 py-0.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-[10px] font-bold text-emerald-300 border border-emerald-500/40 cursor-pointer">+ إضافة بوت</button>
-            </div>
+        <!-- 6-Seat Occupancy & Bot Adder -->
+        <div class="pt-2 border-t border-zinc-800 flex items-center justify-between">
+          <span class="text-xs font-extrabold text-zinc-300">👥 المقاعد (<span id="lobbyPlayerCount">1</span>/6):</span>
+          <div id="lobbyBotControls" class="flex items-center gap-1.5">
+            <button type="button" onclick="addLobbyBot()" class="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-300 text-[11px] font-black cursor-pointer">
+              + إضافة بوت 🤖
+            </button>
+            <button type="button" onclick="removeLobbyBot()" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 text-[11px] font-bold cursor-pointer">
+              - إزالة
+            </button>
           </div>
-          <div id="lobbySeatsGrid" class="grid grid-cols-3 gap-2"></div>
         </div>
       </div>
 
-      <div class="space-y-2 mt-3">
-        <button type="button" id="startLobbyMatchBtn" onclick="startLobbyMatch()" class="btn-3d w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm">
+      <!-- 6 Player Seats Grid -->
+      <div id="lobbySeatsGrid" class="grid grid-cols-3 gap-2 my-1"></div>
+
+      <div class="space-y-2 mt-2">
+        <button type="button" id="startLobbyMatchBtn" onclick="startLobbyMatch()" disabled class="btn-3d w-full py-3 rounded-2xl bg-emerald-600 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-black text-sm">
           بدء المواجهة الآن 🔥
+        </button>
+
+        <button type="button" onclick="leaveOnlineLobby()" class="w-full py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-300 cursor-pointer">
+          إلغاء والعودة للقائمة الرئيسية
         </button>
       </div>
     </section>
 
-    <!-- ==================== SCREEN 3: ACTIVE GAMEPLAY (UP TO 6 PLAYERS) ==================== -->
+    <!-- ==================== SCREEN 3: ACTIVE MULTIPLAYER GAMEPLAY ARENA ==================== -->
     <section id="screen-game" class="hidden flex-1 flex flex-col justify-between p-2.5 relative overflow-hidden">
 
-      <!-- TOP BAR: ALL OPPONENTS GRID (UP TO 5 OPPONENTS) -->
-      <div class="tactical-card rounded-2xl p-2 border border-zinc-800/90 z-20">
+      <!-- TOP BAR: OPPONENTS GRID (UP TO 5 OPPONENTS) -->
+      <div class="tactical-card rounded-2xl p-2 border border-zinc-800/90 z-10">
         <div class="flex items-center justify-between mb-1.5 px-1">
-          <span class="text-[10px] font-bold text-zinc-400">الخصوم (انقر لاختيار الهدف 🎯):</span>
-          <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold text-zinc-400">الخصوم (انقر على خصم لتحديد الهدف 🎯):</span>
+          <span class="text-[10px] font-bold text-amber-400">الأدوات: 7 خانات لكل لاعب</span>
+        </div>
+        <div id="opponentsGridContainer" class="grid grid-cols-2 gap-1.5"></div>
+      </div>
+
+      <!-- CENTER ARENA: ROUND INFO, TURN TIMER, DYNAMIC WEAPON & ACTION LOG -->
+      <div class="flex-1 flex flex-col items-center justify-between my-1.5 relative">
+        <!-- Top Status Pills -->
+        <div class="w-full flex items-center justify-between px-1 z-10">
+          <div class="flex items-center gap-1.5">
+            <span class="px-2 py-0.5 rounded-lg bg-zinc-900 border border-zinc-700 text-[10px] font-bold text-zinc-300">
+              الجولة <b id="roundNumberDisplay" class="text-amber-400">1</b>
+            </span>
+            <span class="px-2 py-0.5 rounded-lg bg-zinc-900 border border-zinc-700 text-[10px] font-bold text-zinc-300 flex items-center gap-1">
+              <span>الذخيرة:</span>
+              <b id="remainingShellsCount" class="text-white">0</b>
+              <span id="shellsVisualPips" class="inline-flex items-center gap-0.5 mr-0.5"></span>
+            </span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
             <div id="turnTimerBox" class="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-700 flex items-center gap-1">
               <span class="text-[10px]">⏱️</span>
               <span id="turnTimerDisplay" class="text-[11px] font-mono font-black text-emerald-400">30s</span>
             </div>
-            <div class="text-[10px] font-bold text-zinc-400">
-              جولة <span id="roundNumberDisplay" class="text-xs font-black text-amber-400">1</span>
+
+            <div id="doubleDamageBadge" class="hidden px-2 py-0.5 rounded-lg bg-red-600/20 border border-red-500 text-red-400 text-[10px] font-black animate-pulse">
+              🔥 x2
             </div>
+            <button type="button" id="inGameAdItemBtn" onclick="openRewardModal('item')" class="px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer">
+              <span>🎬</span>
+              <span>+أداة</span>
+            </button>
           </div>
         </div>
 
-        <!-- Opponents Cards Container -->
-        <div id="opponentsGridContainer" class="grid grid-cols-3 gap-1.5"></div>
-      </div>
-
-      <!-- CENTER ARENA: TABLE, SHELLS COUNTER & DYNAMIC WEAPON STAGE -->
-      <div id="arenaContainer" class="table-felt flex-1 my-2 rounded-3xl relative flex flex-col items-center justify-between p-2.5 overflow-hidden">
-
-        <div class="w-full flex items-center justify-between gap-2 z-10">
-          <!-- Remaining Shells Counter with Visual Bar -->
-          <div class="flex items-center gap-1.5 bg-zinc-950/90 border border-zinc-800 px-2.5 py-1 rounded-full">
-            <span class="text-[10px] text-zinc-400 font-bold">الذخيرة:</span>
-            <span id="remainingShellsCount" class="text-xs font-black text-white">5</span>
-            <div id="shellsVisualPips" class="flex items-center gap-0.5 mr-1"></div>
-          </div>
-
-          <div id="doubleDamageBadge" class="hidden items-center gap-1 bg-red-600/20 border border-red-500 px-2 py-0.5 rounded-full animate-pulse">
-            <span class="text-[11px]">🪚</span>
-            <span class="text-[10px] font-black text-red-400">ضرر x2</span>
-          </div>
-
-          <button type="button" id="inGameAdItemBtn" onclick="openRewardModal('item')" class="flex items-center gap-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 px-2 py-1 rounded-full transition cursor-pointer">
-            <span class="text-[11px]">🎁</span>
-            <span class="text-[10px] font-bold text-amber-300">+أداة</span>
-          </button>
-        </div>
-
-        <!-- Status / Bot Notice Banner (Stays >= 360ms per bot action) -->
+        <!-- Live Action Banner -->
         <div id="actionBanner" class="w-full text-center py-1.5 px-2.5 rounded-xl bg-zinc-900/90 border border-zinc-700/70 text-[11px] font-bold text-zinc-200 z-10 shadow-md">
-          جاري تجهيز السلاح...
+          دورك الآن! اختر خصماً أو أداة للعب 🎯
         </div>
 
-        <!-- CENTER DYNAMIC WEAPON SVG STAGE -->
-        <div id="shotgunStage" class="relative w-full flex-1 flex items-center justify-center my-0.5">
-          <!-- Active Turn Weapon & Skin Badge + Selected Target -->
+        <!-- Dynamic Weapon & Muzzle Stage -->
+        <div class="relative w-full flex-1 flex items-center justify-center my-0.5">
+          <div class="absolute w-44 h-44 rounded-full border border-zinc-800/70 bg-zinc-900/25"></div>
+          <div class="absolute w-28 h-28 rounded-full border border-dashed border-zinc-700/40"></div>
+
+          <!-- Active Weapon & Skin Badge + Selected Target -->
           <div class="absolute top-0 flex flex-col items-center gap-1 z-20">
             <div id="activeWeaponOwnerBadge" class="px-2.5 py-0.5 rounded-full bg-purple-950/90 border border-purple-500/45 text-[10px] font-black text-purple-200 shadow">
               سلاحك: شوتكن • الفولاذ الكلاسيكي
@@ -883,8 +832,18 @@
       roomId: null,
       isHost: false,
       isOnlineMatch: false,
-      lastShownRound: 0
+      lastShownRound: 0,
+      ticketHeldForRoom: false
     };
+
+    function refundHeldTicketIfNeeded() {
+      if (OnlineSession.ticketHeldForRoom) {
+        AppState.tickets += 1;
+        OnlineSession.ticketHeldForRoom = false;
+        saveProfile();
+        updateTicketsAndStatsUI();
+      }
+    }
 
     function initServerConnection() {
       if (typeof io === 'undefined') {
@@ -915,26 +874,33 @@
       });
 
       socket.on('room_created', (data) => {
-        OnlineSession.roomId = data.roomId || data.code;
+        OnlineSession.roomId = data.roomId || data.code || AppState.roomCode;
         OnlineSession.isHost = true;
         AppState.roomCode = OnlineSession.roomId;
-        document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
-        document.getElementById('copyFeedback').textContent = '';
+        const codeEl = document.getElementById('generatedRoomCode');
+        const copyEl = document.getElementById('copyFeedback');
+        if (codeEl) codeEl.textContent = AppState.roomCode;
+        if (copyEl) copyEl.textContent = '';
 
         setupLobbyUI({
           badge: 'غرفة خاصة أونلاين (حتى 6 لاعبين)',
-          title: 'غرفة التحدي الجماعي',
+          title: 'إعدادات الغرفة الخاصة',
           subtitle: 'شارك رمز الغرفة مع أصدقائك أو أضف بوتات',
           showCodeBox: true,
           showHostSettings: true
         });
-        syncOnlineLobbySeats(data.players || data.seats || []);
+        if (data.players || data.seats) {
+          syncOnlineLobbySeats(data.players || data.seats);
+        } else {
+          renderLobbySeats();
+        }
         showScreen('screen-lobby');
       });
 
       socket.on('room_joined', (data) => {
-        OnlineSession.roomId = data.roomId || data.code;
-        OnlineSession.isHost = (data.hostId === socket.id);
+        refundHeldTicketIfNeeded();
+        OnlineSession.roomId = data.roomId || data.code || AppState.roomCode;
+        OnlineSession.isHost = data.hostId ? (data.hostId === socket.id) : false;
         AppState.roomCode = OnlineSession.roomId;
         document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
 
@@ -945,7 +911,11 @@
           showCodeBox: true,
           showHostSettings: OnlineSession.isHost
         });
-        syncOnlineLobbySeats(data.players || data.seats || []);
+        if (data.players || data.seats) {
+          syncOnlineLobbySeats(data.players || data.seats);
+        } else {
+          renderLobbySeats();
+        }
         showScreen('screen-lobby');
       });
 
@@ -953,10 +923,18 @@
         if (data.hostId) {
           OnlineSession.isHost = (data.hostId === socket.id);
         }
+        if (typeof data.turnDuration === 'number') {
+          AppState.turnDuration = data.turnDuration;
+        }
+        const hostBox = document.getElementById('hostSettingsBox');
+        if (hostBox && AppState.currentMode === 'private') {
+          hostBox.style.display = OnlineSession.isHost ? 'block' : 'none';
+        }
         syncOnlineLobbySeats(data.players || data.seats || []);
       });
 
       socket.on('join_error', (err) => {
+        refundHeldTicketIfNeeded();
         const msg = (typeof err === 'string') ? err : (err && err.message ? err.message : 'تعذر الانضمام للغرفة');
         const joinErrEl = document.getElementById('joinErrorText');
         if (joinErrEl && !document.getElementById('joinRoomModal').classList.contains('hidden')) {
@@ -967,6 +945,7 @@
       });
 
       socket.on('match_started', (state) => {
+        OnlineSession.ticketHeldForRoom = false;
         OnlineSession.isOnlineMatch = true;
         OnlineSession.lastShownRound = 0;
         applyOnlineServerState(state, true);
@@ -1024,11 +1003,11 @@
     }
 
     function syncOnlineLobbySeats(serverPlayers) {
-      if (!Array.isArray(serverPlayers)) return;
+      if (!Array.isArray(serverPlayers) || serverPlayers.length === 0) return;
       AppState.lobbySeats = serverPlayers.map((p, idx) => {
-        const isMe = (socket && p.id === socket.id);
+        const isMe = (socket && p.id === socket.id) || Boolean(p.isSelf);
         return {
-          id: p.id,
+          id: p.id || `seat_${idx}`,
           name: isMe ? 'أنت (المضيف)' : (p.name || `لاعب ${idx + 1}`),
           avatar: isMe ? '😎' : (p.isBot ? '🤖' : '🧑🏻'),
           isBot: Boolean(p.isBot),
@@ -1052,7 +1031,6 @@
       m.maxHp = state.maxHp || 5;
       m.doubleDamage = Boolean(state.doubleDamage);
 
-      // Reorder players so local socket user is always index 0 ("أنت")
       const myIdx = state.players.findIndex(p => socket && p.id === socket.id);
       const ordered = myIdx >= 0
         ? [...state.players.slice(myIdx), ...state.players.slice(0, myIdx)]
@@ -1100,7 +1078,6 @@
         showScreen('screen-game');
       }
 
-      // Show round reveal overlay when a new round starts on server
       if (state.roundReveal && m.round !== OnlineSession.lastShownRound) {
         OnlineSession.lastShownRound = m.round;
         const liveCnt = state.roundReveal.live || 0;
@@ -1407,7 +1384,7 @@
         id: 'drink',
         name: 'شراب الطاقة',
         icon: '🥤',
-        desc: 'يسحب أقسام السلاح ويُخرج الرصاصة الحالية دون إطلاقها مع كشف نوعها للجميع.'
+        desc: 'يسحب أقسام السلاح ويُخرج الرصاصة الحالية دون إطلاقها مع كشف نوعها.'
       },
       cuffs: {
         id: 'cuffs',
@@ -1425,7 +1402,7 @@
         id: 'thief',
         name: 'السارق',
         icon: '🦝',
-        desc: 'يكشف عدد أدوات خصومك، وعند اختيار خصم يكشف لك جميع أدواته لتختار الأداة التي تريد سرقتها.'
+        desc: 'يكشف أعداد أدوات خصومك، وعند اختيار خصم يكشف لك جميع أدواته لتختار الأداة التي تريد سرقتها.'
       },
       swapper: {
         id: 'swapper',
@@ -1454,41 +1431,11 @@
     };
 
     const WEAPON_TYPES = [
-      {
-        id: 'shotgun',
-        name: 'شوتكن',
-        icon: '🔫',
-        price: 0,
-        badge: 'مجاني • كلاسيكي'
-      },
-      {
-        id: 'pistol',
-        name: 'مسدس',
-        icon: '🔫',
-        price: 6,
-        badge: 'خفيف وسريع'
-      },
-      {
-        id: 'ak47',
-        name: 'كلاشنكوف',
-        icon: '💥',
-        price: 10,
-        badge: 'هجومي تكتيكي'
-      },
-      {
-        id: 'bazooka',
-        name: 'بازوكا',
-        icon: '🚀',
-        price: 14,
-        badge: 'قاذف صاروخي'
-      },
-      {
-        id: 'cannon',
-        name: 'مدفع',
-        icon: '💣',
-        price: 18,
-        badge: 'مدفع حربي ثقيل'
-      }
+      { id: 'shotgun', name: 'شوتكن', icon: '🔫', price: 0, badge: 'مجاني • كلاسيكي' },
+      { id: 'pistol', name: 'مسدس', icon: '🔫', price: 6, badge: 'خفيف وسريع' },
+      { id: 'ak47', name: 'كلاشنكوف', icon: '💥', price: 10, badge: 'هجومي تكتيكي' },
+      { id: 'bazooka', name: 'بازوكا', icon: '🚀', price: 14, badge: 'قاذف صاروخي' },
+      { id: 'cannon', name: 'مدفع', icon: '💣', price: 18, badge: 'مدفع حربي ثقيل' }
     ];
 
     const WEAPON_SKINS = [
@@ -2166,6 +2113,7 @@
     }
 
     function leaveOnlineLobby() {
+      refundHeldTicketIfNeeded();
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('leave_room', { roomId: OnlineSession.roomId });
       }
@@ -2175,6 +2123,7 @@
     }
 
     function backToMenu() {
+      refundHeldTicketIfNeeded();
       stopTurnTimer();
       if (AppState.match.bannerQueueTimer) {
         clearTimeout(AppState.match.bannerQueueTimer);
@@ -2258,6 +2207,7 @@
         return;
       }
       AppState.tickets--;
+      OnlineSession.ticketHeldForRoom = true;
       saveProfile();
       updateTicketsAndStatsUI();
       AppState.currentMode = 'quick';
@@ -2285,29 +2235,58 @@
         openRewardModal('ticket');
         return;
       }
-      if (!socket || !OnlineSession.connected) {
-        alert('جاري الاتصال بالسيرفر الأونلاين، انتظر لحظة ثم أعد المحاولة.');
-        return;
-      }
-      AppState.tickets--;
-      saveProfile();
-      updateTicketsAndStatsUI();
+
       AppState.currentMode = 'private';
       AppState.isDoubleOrNothingRun = false;
       OnlineSession.isHost = true;
+      OnlineSession.roomId = null;
+      OnlineSession.ticketHeldForRoom = false;
 
-      socket.emit('create_room', {
-        name: 'Host',
-        turnDuration: AppState.turnDuration,
-        weaponId: AppState.equippedWeapon,
-        skinId: AppState.equippedSkin
+      const localCode = `SHW-${Math.floor(100 + Math.random() * 900)}`;
+      AppState.roomCode = localCode;
+
+      const codeEl = document.getElementById('generatedRoomCode');
+      const copyEl = document.getElementById('copyFeedback');
+      if (codeEl) codeEl.textContent = AppState.roomCode;
+      if (copyEl) copyEl.textContent = '';
+
+      selectTurnDuration(AppState.turnDuration || 30);
+      initLobbySeats();
+
+      showScreen('screen-lobby');
+      setupLobbyUI({
+        badge: 'غرفة خاصة أونلاين (حتى 6 لاعبين)',
+        title: 'إعدادات الغرفة الخاصة',
+        subtitle: 'اختر مدة الدور والمقاعد ثم اضغط بدء المواجهة',
+        showCodeBox: true,
+        showHostSettings: true
       });
+
+      const hostBox = document.getElementById('hostSettingsBox');
+      const codeBox = document.getElementById('roomCodeBox');
+      if (hostBox) {
+        hostBox.classList.remove('hidden');
+        hostBox.style.display = 'block';
+      }
+      if (codeBox) {
+        codeBox.classList.remove('hidden');
+        codeBox.style.display = 'block';
+      }
+
+      if (socket && OnlineSession.connected) {
+        socket.emit('create_room', {
+          name: 'Host',
+          turnDuration: AppState.turnDuration,
+          weaponId: AppState.equippedWeapon,
+          skinId: AppState.equippedSkin
+        });
+      }
     }
 
     function initLobbySeats() {
       AppState.lobbySeats = [
         {
-          id: 'player',
+          id: (socket && socket.id) ? socket.id : 'player',
           name: 'أنت (المضيف)',
           avatar: '😎',
           isBot: false,
@@ -2365,7 +2344,6 @@
       if (AppState.lobbySeats.length >= 6) return;
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('add_bot', { roomId: OnlineSession.roomId });
-        return;
       }
       const botIdx = AppState.lobbySeats.filter(s => s.isBot).length;
       const loadout = generateBotLoadout(botIdx + 1);
@@ -2386,7 +2364,6 @@
       if (AppState.lobbySeats.length <= 1) return;
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('remove_bot', { roomId: OnlineSession.roomId });
-        return;
       }
       AppState.lobbySeats.pop();
       AudioEngine.blankClick();
@@ -2395,13 +2372,25 @@
 
     function startLobbyMatch() {
       if (AppState.lobbySeats.length < 2) return;
+      if (AppState.tickets <= 0) {
+        openRewardModal('ticket');
+        return;
+      }
+
+      AppState.tickets -= 1;
+      OnlineSession.ticketHeldForRoom = false;
+      saveProfile();
+      updateTicketsAndStatsUI();
+
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('start_match', {
           roomId: OnlineSession.roomId,
-          turnDuration: AppState.turnDuration
+          turnDuration: AppState.turnDuration,
+          players: AppState.lobbySeats
         });
         return;
       }
+
       const seats = AppState.lobbySeats.map(s => s.isSelf ? {
         ...s,
         weaponId: AppState.equippedWeapon,
@@ -3865,6 +3854,7 @@
     }
 
     function confirmLeaveGame() {
+      refundHeldTicketIfNeeded();
       if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('leave_room', { roomId: OnlineSession.roomId });
       }
