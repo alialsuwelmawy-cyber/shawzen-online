@@ -517,17 +517,46 @@
       }
     }
 
+    let createRoomTimer = null;
+    let createRoomAttempts = 0;
+
+    function setCodeText(t) {
+      const el = document.getElementById('generatedRoomCode');
+      if (el) el.textContent = t;
+    }
+
     function emitCreateRoomToServer() {
-      if (!socket || !OnlineSession.connected) return;
+      if (!socket || !OnlineSession.connected) {
+        setCodeText('⏳ السيرفر يستيقظ... انتظر قليلاً');
+        return;
+      }
+      if (createRoomTimer) clearTimeout(createRoomTimer);
+      setCodeText('جاري التوليد من السيرفر...');
       socket.emit(SERVER_EVENTS.CREATE_ROOM, {
         name: 'Host',
         turnDuration: AppState.turnDuration,
         weaponId: AppState.equippedWeapon,
         skinId: AppState.equippedSkin
       });
+      createRoomTimer = setTimeout(() => {
+        if (!OnlineSession.pendingRoomCreation) return;
+        createRoomAttempts++;
+        if (createRoomAttempts < 3) {
+          emitCreateRoomToServer(); // إعادة المحاولة تلقائياً
+        } else {
+          createRoomAttempts = 0;
+          setCodeText('⚠️ السيرفر لم يرد — اضغط على "نسخ" لإعادة المحاولة');
+        }
+      }, 7000);
+    }
+
+    // إيقاظ سيرفر Render المجاني (ينام بعد فترة خمول)
+    function wakeServer() {
+      try { fetch(SERVER_URL, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch (e) {}
     }
 
     function initServerConnection() {
+      wakeServer();
       if (!SERVER_URL || typeof window.io !== 'function') {
         updateServerStatusUI('وضع محلي • تعذر تحميل عميل السيرفر', 'text-zinc-400');
         updateRoomSyncBadge(false);
@@ -550,10 +579,12 @@
         }
       });
 
-      socket.on('connect_error', () => {
+      socket.on('connect_error', (err) => {
         OnlineSession.connected = false;
-        updateServerStatusUI('جاري إعادة محاولة الاتصال بالسيرفر...', 'text-amber-400');
+        console.warn('socket connect_error:', err && err.message);
+        updateServerStatusUI('تعذر الاتصال بالسيرفر (' + ((err && err.message) || 'غير معروف') + ') • إعادة المحاولة...', 'text-amber-400');
       });
+      socket.onAny((evt, ...args) => console.log('[socket event]', evt, args));
 
       socket.on('disconnect', () => {
         OnlineSession.connected = false;
@@ -562,8 +593,10 @@
       });
 
       socket.on('room_created', (payload = {}) => {
-        const serverCode = extractServerRoomCode(payload);
-        if (!serverCode) return;
+        if (createRoomTimer) { clearTimeout(createRoomTimer); createRoomTimer = null; }
+        createRoomAttempts = 0;
+        const serverCode = extractServerRoomCode(typeof payload === 'string' ? { code: payload } : payload);
+        if (!serverCode) { setCodeText('⚠️ السيرفر لم يرسل رمزاً'); return; }
 
         AppState.roomCode = serverCode;
         OnlineSession.roomId = serverCode;
@@ -640,8 +673,8 @@
           errEl.textContent = err.message || 'تعذر الانضمام إلى الغرفة من السيرفر.';
         }
         if (OnlineSession.pendingRoomCreation) {
-          const codeEl = document.getElementById('generatedRoomCode');
-          if (codeEl) codeEl.textContent = 'خطأ من السيرفر';
+          if (createRoomTimer) { clearTimeout(createRoomTimer); createRoomTimer = null; }
+          setCodeText('خطأ من السيرفر: ' + (err.message || ''));
         }
       });
 
@@ -1967,6 +2000,7 @@
 
     function copyRoomCode() {
       const code = AppState.roomCode;
+      if (!code && OnlineSession.pendingRoomCreation) { createRoomAttempts = 0; wakeServer(); emitCreateRoomToServer(); return; }
       if (!code) {
         document.getElementById('copyFeedback').textContent = 'لا يوجد رمز من السيرفر بعد';
         return;
