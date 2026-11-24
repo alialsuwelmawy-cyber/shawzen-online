@@ -597,7 +597,7 @@
         <div id="joinErrorText" class="text-xs text-red-400 font-bold mt-2 h-4"></div>
 
         <div class="mt-4 flex gap-2">
-          <button type="button" onclick="submitJoinCode()" class="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs cursor-pointer">
+          <button id="submitJoinBtn" type="button" onclick="submitJoinCode()" class="flex-1 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-black text-xs cursor-pointer">
             دخول الغرفة
           </button>
           <button type="button" onclick="toggleModal('joinRoomModal', false)" class="px-4 py-3 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
@@ -903,8 +903,134 @@
       roomId: null,
       isHost: false,
       isOnlineMatch: false,
-      lastShownRound: 0
+      lastShownRound: 0,
+      pendingJoinCode: null,
+      joinTimeoutTimer: null
     };
+
+    function emitCreateRoomToServer(roomCode) {
+      if (!socket || !OnlineSession.connected) return;
+      const payload = {
+        roomId: roomCode,
+        code: roomCode,
+        roomCode: roomCode,
+        id: roomCode,
+        name: 'Host',
+        playerName: 'Host',
+        turnDuration: AppState.turnDuration,
+        maxPlayers: AppState.maxRoomPlayers,
+        weaponId: AppState.equippedWeapon,
+        skinId: AppState.equippedSkin
+      };
+      socket.emit('create_room', payload, (ack) => {
+        if (ack && (ack.roomId || ack.code || ack.id || ack.players || ack.seats || ack.ok || ack.success)) {
+          handleServerRoomEntered(ack, true);
+        }
+      });
+    }
+
+    function emitJoinRoomToServer(roomCode) {
+      if (!socket || !OnlineSession.connected) return;
+      const payload = {
+        roomId: roomCode,
+        code: roomCode,
+        roomCode: roomCode,
+        id: roomCode,
+        name: 'Player',
+        playerName: 'Player',
+        weaponId: AppState.equippedWeapon,
+        skinId: AppState.equippedSkin
+      };
+      socket.emit('join_room', payload, (ack) => {
+        if (!ack) return;
+        if (ack.error || ack.ok === false || ack.success === false) {
+          handleJoinFailure(ack.error || ack.message || 'تعذر الانضمام للغرفة');
+        } else {
+          handleServerRoomEntered(ack, false);
+        }
+      });
+    }
+
+    function clearJoinPendingState() {
+      if (OnlineSession.joinTimeoutTimer) {
+        clearTimeout(OnlineSession.joinTimeoutTimer);
+        OnlineSession.joinTimeoutTimer = null;
+      }
+      const btn = document.getElementById('submitJoinBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'دخول الغرفة';
+      }
+    }
+
+    function handleJoinFailure(msg) {
+      clearJoinPendingState();
+      OnlineSession.roomId = null;
+      OnlineSession.isHost = false;
+      const joinErrEl = document.getElementById('joinErrorText');
+      toggleModal('joinRoomModal', true);
+      if (joinErrEl) {
+        joinErrEl.textContent = msg || 'لم يتم العثور على غرفة بهذا الرمز أو أنها ممتلئة!';
+      }
+    }
+
+    function handleServerRoomEntered(data, defaultIsHost) {
+      clearJoinPendingState();
+      AppState.pendingRoomCreate = false;
+      toggleModal('joinRoomModal', false);
+
+      const serverCode = normalizeRoomCode(
+        (data && (data.roomId || data.code || data.roomCode || data.id)) || OnlineSession.roomId || AppState.roomCode
+      );
+      if (serverCode) {
+        OnlineSession.roomId = serverCode;
+        AppState.roomCode = serverCode;
+      }
+      if (data && data.hostId && socket) {
+        OnlineSession.isHost = (data.hostId === socket.id);
+      } else if (typeof defaultIsHost === 'boolean') {
+        OnlineSession.isHost = defaultIsHost;
+      }
+      if (data && typeof data.turnDuration === 'number') {
+        AppState.turnDuration = data.turnDuration;
+      }
+      if (data && typeof data.maxPlayers === 'number') {
+        AppState.maxRoomPlayers = data.maxPlayers;
+      }
+
+      const codeEl = document.getElementById('generatedRoomCode');
+      if (codeEl) codeEl.textContent = AppState.roomCode;
+      const copyEl = document.getElementById('copyFeedback');
+      if (copyEl) copyEl.textContent = '';
+
+      setRoomSyncStatus(OnlineSession.isHost ? 'مُزامنة مع السيرفر ✓' : 'متصل بالغرفة ✓', true);
+      setupLobbyUI({
+        badge: OnlineSession.isHost
+          ? `غرفة خاصة أونلاين (حتى ${AppState.maxRoomPlayers} لاعبين)`
+          : `غرفة خاصة أونلاين (${AppState.roomCode})`,
+        title: OnlineSession.isHost ? 'غرفة التحدي الجماعي' : 'تم الانضمام للغرفة بنجاح!',
+        subtitle: OnlineSession.isHost
+          ? 'اضبط إعدادات الغرفة وشارك الرمز مع أصدقائك أو أضف بوتات'
+          : 'بانتظار بدء الجولة من المضيف',
+        showCodeBox: true,
+        showHostSettings: true
+      });
+      updateDurationButtonsUI(AppState.turnDuration, OnlineSession.isHost);
+      updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, OnlineSession.isHost);
+
+      const incomingPlayers = (data && (data.players || data.seats || data.members)) || [];
+      if (incomingPlayers.length > 0) {
+        syncOnlineLobbySeats(incomingPlayers);
+      } else if (!OnlineSession.isHost && socket) {
+        // Fallback seat display if server sent minimal payload before room_updated
+        syncOnlineLobbySeats([
+          { id: (data && data.hostId) || 'host', name: 'المضيف', isBot: false },
+          { id: socket.id, name: 'أنت', isBot: false, weaponId: AppState.equippedWeapon, skinId: AppState.equippedSkin }
+        ]);
+      }
+
+      showScreen('screen-lobby');
+    }
 
     function initServerConnection() {
       if (typeof io === 'undefined') {
@@ -913,9 +1039,11 @@
       }
 
       socket = io(SERVER_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
+        upgrade: true,
         reconnection: true,
-        reconnectionAttempts: 10
+        reconnectionAttempts: 15,
+        timeout: 20000
       });
 
       socket.on('connect', () => {
@@ -927,15 +1055,14 @@
         // If the user already opened the Create Room screen while server was waking up, register it now
         if (AppState.pendingRoomCreate && AppState.currentMode === 'private' && OnlineSession.isHost && AppState.roomCode) {
           AppState.pendingRoomCreate = false;
-          socket.emit('create_room', {
-            roomId: AppState.roomCode,
-            code: AppState.roomCode,
-            name: 'Host',
-            turnDuration: AppState.turnDuration,
-            maxPlayers: AppState.maxRoomPlayers,
-            weaponId: AppState.equippedWeapon,
-            skinId: AppState.equippedSkin
-          });
+          emitCreateRoomToServer(AppState.roomCode);
+        }
+
+        // If the guest had a pending join while server was waking up, execute it automatically
+        if (OnlineSession.pendingJoinCode) {
+          const codeToJoin = OnlineSession.pendingJoinCode;
+          OnlineSession.pendingJoinCode = null;
+          emitJoinRoomToServer(codeToJoin);
         }
       });
 
@@ -952,96 +1079,53 @@
       });
 
       socket.on('room_created', (data) => {
-        AppState.pendingRoomCreate = false;
-        const serverCode = normalizeRoomCode((data && (data.roomId || data.code || data.id)) || AppState.roomCode);
-        OnlineSession.roomId = serverCode;
-        OnlineSession.isHost = true;
-        AppState.roomCode = serverCode;
-        if (data && typeof data.turnDuration === 'number') {
-          AppState.turnDuration = data.turnDuration;
-        }
-        if (data && typeof data.maxPlayers === 'number') {
-          AppState.maxRoomPlayers = data.maxPlayers;
-        }
-        document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
-        setRoomSyncStatus('مُزامنة مع السيرفر ✓', true);
+        handleServerRoomEntered(data, true);
+      });
 
-        setupLobbyUI({
-          badge: `غرفة خاصة أونلاين (حتى ${AppState.maxRoomPlayers} لاعبين)`,
-          title: 'غرفة التحدي الجماعي',
-          subtitle: 'اضبط إعدادات الغرفة وشارك الرمز مع أصدقائك أو أضف بوتات',
-          showCodeBox: true,
-          showHostSettings: true
+      ['room_joined', 'joined_room', 'join_success', 'player_joined'].forEach(evName => {
+        socket.on(evName, (data) => {
+          // Only treat as entering lobby if we are currently trying to join or already in that room
+          if (OnlineSession.roomId || OnlineSession.joinTimeoutTimer) {
+            handleServerRoomEntered(data, false);
+          }
         });
-        updateDurationButtonsUI(AppState.turnDuration, true);
-        updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, true);
-        const incomingPlayers = (data && (data.players || data.seats)) || [];
-        if (incomingPlayers.length > 0) {
-          syncOnlineLobbySeats(incomingPlayers);
-        }
-        showScreen('screen-lobby');
       });
 
-      socket.on('room_joined', (data) => {
-        AppState.pendingRoomCreate = false;
-        const serverCode = normalizeRoomCode((data && (data.roomId || data.code || data.id)) || OnlineSession.roomId);
-        OnlineSession.roomId = serverCode;
-        OnlineSession.isHost = Boolean(data && data.hostId && data.hostId === socket.id);
-        AppState.roomCode = serverCode;
-        if (data && typeof data.turnDuration === 'number') {
-          AppState.turnDuration = data.turnDuration;
-        }
-        if (data && typeof data.maxPlayers === 'number') {
-          AppState.maxRoomPlayers = data.maxPlayers;
-        }
-        document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
-        document.getElementById('copyFeedback').textContent = '';
-        setRoomSyncStatus('متصل بالغرفة ✓', true);
-
-        setupLobbyUI({
-          badge: `غرفة خاصة أونلاين (${AppState.roomCode})`,
-          title: 'تم الانضمام للغرفة بنجاح!',
-          subtitle: OnlineSession.isHost ? 'أنت المضيف الآن' : 'بانتظار بدء الجولة من المضيف',
-          showCodeBox: true,
-          showHostSettings: true
+      ['room_updated', 'room_state', 'lobby_update'].forEach(evName => {
+        socket.on(evName, (data) => {
+          if (!data) return;
+          // If guest was waiting for join confirmation and server responded directly with room_updated, enter lobby!
+          if (OnlineSession.joinTimeoutTimer) {
+            handleServerRoomEntered(data, false);
+            return;
+          }
+          const updatedCode = normalizeRoomCode(data.roomId || data.code || data.roomCode || OnlineSession.roomId);
+          if (updatedCode) {
+            OnlineSession.roomId = updatedCode;
+            AppState.roomCode = updatedCode;
+            const codeEl = document.getElementById('generatedRoomCode');
+            if (codeEl) codeEl.textContent = AppState.roomCode;
+          }
+          if (data.hostId) {
+            OnlineSession.isHost = (data.hostId === socket.id);
+          }
+          if (typeof data.turnDuration === 'number') {
+            AppState.turnDuration = data.turnDuration;
+          }
+          if (typeof data.maxPlayers === 'number') {
+            AppState.maxRoomPlayers = data.maxPlayers;
+          }
+          updateDurationButtonsUI(AppState.turnDuration, OnlineSession.isHost);
+          updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, OnlineSession.isHost);
+          syncOnlineLobbySeats(data.players || data.seats || data.members || []);
         });
-        updateDurationButtonsUI(AppState.turnDuration, OnlineSession.isHost);
-        updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, OnlineSession.isHost);
-        syncOnlineLobbySeats((data && (data.players || data.seats)) || []);
-        showScreen('screen-lobby');
       });
 
-      socket.on('room_updated', (data) => {
-        if (!data) return;
-        const updatedCode = normalizeRoomCode(data.roomId || data.code || OnlineSession.roomId);
-        if (updatedCode) {
-          OnlineSession.roomId = updatedCode;
-          AppState.roomCode = updatedCode;
-          const codeEl = document.getElementById('generatedRoomCode');
-          if (codeEl) codeEl.textContent = AppState.roomCode;
-        }
-        if (data.hostId) {
-          OnlineSession.isHost = (data.hostId === socket.id);
-        }
-        if (typeof data.turnDuration === 'number') {
-          AppState.turnDuration = data.turnDuration;
-        }
-        if (typeof data.maxPlayers === 'number') {
-          AppState.maxRoomPlayers = data.maxPlayers;
-        }
-        updateDurationButtonsUI(AppState.turnDuration, OnlineSession.isHost);
-        updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, OnlineSession.isHost);
-        syncOnlineLobbySeats(data.players || data.seats || []);
-      });
-
-      socket.on('join_error', (err) => {
-        const msg = (typeof err === 'string') ? err : (err && err.message ? err.message : 'تعذر الانضمام للغرفة');
-        const joinErrEl = document.getElementById('joinErrorText');
-        if (joinErrEl && !document.getElementById('joinRoomModal').classList.contains('hidden')) {
-          joinErrEl.textContent = msg;
-        } else {
-          alert(msg);
-        }
+      ['join_error', 'room_error', 'error_message'].forEach(evName => {
+        socket.on(evName, (err) => {
+          const msg = (typeof err === 'string') ? err : (err && err.message ? err.message : 'تعذر الانضمام للغرفة');
+          handleJoinFailure(msg);
+        });
       });
 
       socket.on('match_started', (state) => {
@@ -2495,15 +2579,7 @@
       if (socket && OnlineSession.connected) {
         AppState.pendingRoomCreate = false;
         setRoomSyncStatus('متصل بالسيرفر ✓', true);
-        socket.emit('create_room', {
-          roomId: shortCode,
-          code: shortCode,
-          name: 'Host',
-          turnDuration: AppState.turnDuration,
-          maxPlayers: AppState.maxRoomPlayers,
-          weaponId: AppState.equippedWeapon,
-          skinId: AppState.equippedSkin
-        });
+        emitCreateRoomToServer(shortCode);
       } else {
         AppState.pendingRoomCreate = true;
         setRoomSyncStatus('جاري الربط بالسيرفر...', false);
@@ -2638,6 +2714,7 @@
     }
 
     function openJoinRoom() {
+      clearJoinPendingState();
       document.getElementById('joinCodeInput').value = '';
       document.getElementById('joinErrorText').textContent = '';
       toggleModal('joinRoomModal', true);
@@ -2650,28 +2727,45 @@
     function submitJoinCode() {
       const rawVal = document.getElementById('joinCodeInput').value;
       const val = normalizeRoomCode(rawVal);
+      const errEl = document.getElementById('joinErrorText');
+      const btn = document.getElementById('submitJoinBtn');
+
       if (val.length < 3) {
-        document.getElementById('joinErrorText').textContent = 'الرجاء إدخال رمز غرفة صحيح!';
+        if (errEl) errEl.textContent = 'الرجاء إدخال رمز غرفة صحيح!';
         return;
       }
-      if (!socket || !OnlineSession.connected) {
-        document.getElementById('joinErrorText').textContent = 'غير متصل بالسيرفر حالياً!';
-        return;
-      }
-      toggleModal('joinRoomModal', false);
+
       AppState.currentMode = 'private';
       AppState.isDoubleOrNothingRun = false;
       OnlineSession.isHost = false;
       OnlineSession.roomId = val;
       AppState.roomCode = val;
 
-      socket.emit('join_room', {
-        roomId: val,
-        code: val,
-        name: 'Player',
-        weaponId: AppState.equippedWeapon,
-        skinId: AppState.equippedSkin
-      });
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'جاري الدخول...';
+      }
+      if (errEl) errEl.textContent = '';
+
+      if (OnlineSession.joinTimeoutTimer) {
+        clearTimeout(OnlineSession.joinTimeoutTimer);
+      }
+      OnlineSession.joinTimeoutTimer = setTimeout(() => {
+        OnlineSession.joinTimeoutTimer = null;
+        OnlineSession.pendingJoinCode = null;
+        handleJoinFailure('انتهت مهلة الاتصال بالسيرفر (قد يكون السيرفر في وضع السكون، أعد المحاولة الآن)');
+      }, 15000);
+
+      if (!socket || !OnlineSession.connected) {
+        if (errEl) errEl.textContent = 'جاري إيقاظ السيرفر والانضمام تلقائياً...';
+        OnlineSession.pendingJoinCode = val;
+        if (socket && typeof socket.connect === 'function') {
+          try { socket.connect(); } catch (e) {}
+        }
+        return;
+      }
+
+      emitJoinRoomToServer(val);
     }
 
     function setupLobbyUI({ badge, title, subtitle, showCodeBox, showHostSettings }) {
