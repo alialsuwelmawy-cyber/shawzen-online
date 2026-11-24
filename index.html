@@ -279,7 +279,7 @@
             <div class="w-10 h-10 rounded-xl bg-black/30 flex items-center justify-center text-xl">⚡</div>
             <div>
               <div class="text-sm font-black text-white">لعب عشوائي (Quick Match)</div>
-              <div class="text-[10px] text-red-100/80">مطابقة فورية ضد لاعبين أونلاين • 1 🎟️</div>
+              <div class="text-[10px] text-red-100/80">مطابقة فورية ضد لاعبين أونلاين • مجاني</div>
             </div>
           </div>
           <span class="text-white/80 text-base font-bold">←</span>
@@ -365,8 +365,13 @@
           <div id="copyFeedback" class="text-[10px] text-emerald-400 font-bold mt-1 h-3.5"></div>
         </div>
 
-        <div id="hostSettingsBox" class="mt-2.5 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 text-center">
-          <div id="hostSettingsLabel" class="text-[11px] text-zinc-400 font-bold mb-1.5">⏱️ مدة دور اللاعب الواحد (إعدادات الغرفة):</div>
+        <div id="hostSettingsBox" class="mt-2.5 p-3 rounded-2xl bg-zinc-900/90 border border-amber-500/35 text-center shadow-lg">
+          <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-zinc-800">
+            <span id="hostSettingsLabel" class="text-[11px] text-amber-300 font-black">⚙️ إعدادات الغرفة الخاصة:</span>
+            <span id="roomSyncStatusPill" class="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold">جاهزة ✓</span>
+          </div>
+
+          <div class="text-[11px] text-zinc-300 font-bold mb-1.5 text-right">⏱️ مدة دور اللاعب الواحد:</div>
           <div id="hostDurationButtons" class="grid grid-cols-3 gap-2">
             <button type="button" onclick="selectTurnDuration(30)" id="durBtn-30" class="py-1.5 rounded-xl bg-amber-500 text-zinc-950 font-black text-xs border border-amber-400 transition cursor-pointer">
               30 ثانية
@@ -378,14 +383,26 @@
               60 ثانية
             </button>
           </div>
-          <div id="guestDurationNotice" class="hidden mt-1.5 text-[10px] text-amber-300/90 font-bold">
-            المدة المحددة من المضيف: <span id="guestDurationValue">30</span> ثانية
+
+          <div class="mt-2.5 pt-2 border-t border-zinc-800/80">
+            <div class="text-[11px] text-zinc-300 font-bold mb-1.5 text-right">👥 الحد الأقصى للاعبين في الغرفة:</div>
+            <div id="hostMaxPlayersButtons" class="grid grid-cols-5 gap-1.5">
+              <button type="button" onclick="selectMaxRoomPlayers(2)" id="maxPBtn-2" class="py-1 rounded-lg bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer">2</button>
+              <button type="button" onclick="selectMaxRoomPlayers(3)" id="maxPBtn-3" class="py-1 rounded-lg bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer">3</button>
+              <button type="button" onclick="selectMaxRoomPlayers(4)" id="maxPBtn-4" class="py-1 rounded-lg bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer">4</button>
+              <button type="button" onclick="selectMaxRoomPlayers(5)" id="maxPBtn-5" class="py-1 rounded-lg bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer">5</button>
+              <button type="button" onclick="selectMaxRoomPlayers(6)" id="maxPBtn-6" class="py-1 rounded-lg bg-amber-500 text-zinc-950 font-black text-[11px] border border-amber-400 transition cursor-pointer">6</button>
+            </div>
+          </div>
+
+          <div id="guestDurationNotice" class="hidden mt-2 pt-1.5 border-t border-zinc-800 text-[10px] text-amber-300/90 font-bold">
+            إعدادات المضيف: <span id="guestDurationValue">30</span> ثانية • الحد الأقصى <span id="guestMaxPlayersValue">6</span> لاعبين
           </div>
         </div>
 
         <div class="mt-3 bg-zinc-900/60 border border-zinc-800 p-3 rounded-3xl">
           <div class="flex items-center justify-between mb-2 px-1">
-            <span class="text-[11px] font-bold text-zinc-300">المقاعد (<span id="lobbyPlayerCount">1</span>/6)</span>
+            <span class="text-[11px] font-bold text-zinc-300">المقاعد (<span id="lobbyPlayerCount">1</span>/<span id="lobbyMaxPlayersCount">6</span>)</span>
             <div id="lobbyBotControls" class="flex items-center gap-1.5">
               <button type="button" onclick="removeLobbyBot()" class="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[10px] font-bold text-zinc-300 border border-zinc-700 cursor-pointer">- إزالة</button>
               <button type="button" onclick="addLobbyBot()" class="px-2 py-0.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-[10px] font-bold text-emerald-300 border border-emerald-500/40 cursor-pointer">+ إضافة بوت</button>
@@ -905,19 +922,37 @@
         OnlineSession.connected = true;
         OnlineSession.socketId = socket.id;
         updateServerStatusUI(true, 'متصل بالسيرفر الأونلاين ✓');
+        setRoomSyncStatus('متصل بالسيرفر ✓', true);
+
+        // If the user already opened the Create Room screen while server was waking up, register it now
+        if (AppState.pendingRoomCreate && AppState.currentMode === 'private' && OnlineSession.isHost && AppState.roomCode) {
+          AppState.pendingRoomCreate = false;
+          socket.emit('create_room', {
+            roomId: AppState.roomCode,
+            code: AppState.roomCode,
+            name: 'Host',
+            turnDuration: AppState.turnDuration,
+            maxPlayers: AppState.maxRoomPlayers,
+            weaponId: AppState.equippedWeapon,
+            skinId: AppState.equippedSkin
+          });
+        }
       });
 
       socket.on('disconnect', () => {
         OnlineSession.connected = false;
         updateServerStatusUI(false, 'انقطع الاتصال بالسيرفر...');
+        setRoomSyncStatus('جاري إعادة الاتصال...', false);
       });
 
       socket.on('connect_error', () => {
         OnlineSession.connected = false;
         updateServerStatusUI(false, 'جاري إيقاظ السيرفر...');
+        setRoomSyncStatus('إيقاظ السيرفر...', false);
       });
 
       socket.on('room_created', (data) => {
+        AppState.pendingRoomCreate = false;
         const serverCode = normalizeRoomCode((data && (data.roomId || data.code || data.id)) || AppState.roomCode);
         OnlineSession.roomId = serverCode;
         OnlineSession.isHost = true;
@@ -925,28 +960,30 @@
         if (data && typeof data.turnDuration === 'number') {
           AppState.turnDuration = data.turnDuration;
         }
+        if (data && typeof data.maxPlayers === 'number') {
+          AppState.maxRoomPlayers = data.maxPlayers;
+        }
         document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
-        document.getElementById('copyFeedback').textContent = '';
+        setRoomSyncStatus('مُزامنة مع السيرفر ✓', true);
 
         setupLobbyUI({
-          badge: 'غرفة خاصة أونلاين (حتى 6 لاعبين)',
+          badge: `غرفة خاصة أونلاين (حتى ${AppState.maxRoomPlayers} لاعبين)`,
           title: 'غرفة التحدي الجماعي',
-          subtitle: 'شارك رمز الغرفة القصير مع أصدقائك أو أضف بوتات',
+          subtitle: 'اضبط إعدادات الغرفة وشارك الرمز مع أصدقائك أو أضف بوتات',
           showCodeBox: true,
           showHostSettings: true
         });
         updateDurationButtonsUI(AppState.turnDuration, true);
+        updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, true);
         const incomingPlayers = (data && (data.players || data.seats)) || [];
         if (incomingPlayers.length > 0) {
           syncOnlineLobbySeats(incomingPlayers);
-        } else {
-          initLobbySeats();
-          renderLobbySeats();
         }
         showScreen('screen-lobby');
       });
 
       socket.on('room_joined', (data) => {
+        AppState.pendingRoomCreate = false;
         const serverCode = normalizeRoomCode((data && (data.roomId || data.code || data.id)) || OnlineSession.roomId);
         OnlineSession.roomId = serverCode;
         OnlineSession.isHost = Boolean(data && data.hostId && data.hostId === socket.id);
@@ -954,8 +991,12 @@
         if (data && typeof data.turnDuration === 'number') {
           AppState.turnDuration = data.turnDuration;
         }
+        if (data && typeof data.maxPlayers === 'number') {
+          AppState.maxRoomPlayers = data.maxPlayers;
+        }
         document.getElementById('generatedRoomCode').textContent = AppState.roomCode;
         document.getElementById('copyFeedback').textContent = '';
+        setRoomSyncStatus('متصل بالغرفة ✓', true);
 
         setupLobbyUI({
           badge: `غرفة خاصة أونلاين (${AppState.roomCode})`,
@@ -965,6 +1006,7 @@
           showHostSettings: true
         });
         updateDurationButtonsUI(AppState.turnDuration, OnlineSession.isHost);
+        updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, OnlineSession.isHost);
         syncOnlineLobbySeats((data && (data.players || data.seats)) || []);
         showScreen('screen-lobby');
       });
@@ -984,7 +1026,11 @@
         if (typeof data.turnDuration === 'number') {
           AppState.turnDuration = data.turnDuration;
         }
+        if (typeof data.maxPlayers === 'number') {
+          AppState.maxRoomPlayers = data.maxPlayers;
+        }
         updateDurationButtonsUI(AppState.turnDuration, OnlineSession.isHost);
+        updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, OnlineSession.isHost);
         syncOnlineLobbySeats(data.players || data.seats || []);
       });
 
@@ -1785,6 +1831,8 @@
       currentMode: 'bot',
       roomCode: '',
       turnDuration: 30,
+      maxRoomPlayers: 6,
+      pendingRoomCreate: false,
       selectedBotCount: 1,
       lobbySeats: [],
       pendingAdRewardType: 'ticket',
@@ -2204,6 +2252,7 @@
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('leave_room', { roomId: OnlineSession.roomId });
       }
+      AppState.pendingRoomCreate = false;
       OnlineSession.roomId = null;
       OnlineSession.isHost = false;
       backToMenu();
@@ -2283,18 +2332,20 @@
       initMatch(participants);
     }
 
+    function setRoomSyncStatus(text, isOk) {
+      const pill = document.getElementById('roomSyncStatusPill');
+      if (!pill) return;
+      pill.textContent = text;
+      pill.className = isOk
+        ? 'px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold'
+        : 'px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[9px] font-bold animate-pulse';
+    }
+
     function startQuickMatch() {
-      if (AppState.tickets <= 0) {
-        openRewardModal('ticket');
-        return;
-      }
       if (!socket || !OnlineSession.connected) {
         alert('جاري الاتصال بالسيرفر الأونلاين، انتظر لحظة ثم أعد المحاولة أو العب ضد البوت.');
         return;
       }
-      AppState.tickets--;
-      saveProfile();
-      updateTicketsAndStatsUI();
       AppState.currentMode = 'quick';
       AppState.isDoubleOrNothingRun = false;
       selectTurnDuration(30);
@@ -2344,8 +2395,8 @@
 
       if (labelEl) {
         labelEl.textContent = canEdit
-          ? '⏱️ مدة دور اللاعب الواحد (إعدادات المضيف):'
-          : '⏱️ مدة دور اللاعب الواحد (إعدادات الغرفة):';
+          ? '⚙️ إعدادات الغرفة الخاصة (تحكم المضيف):'
+          : '⚙️ إعدادات الغرفة الخاصة (عرض فقط):';
       }
       if (guestNotice && guestVal) {
         guestVal.textContent = seconds;
@@ -2372,18 +2423,50 @@
       });
     }
 
+    function updateMaxPlayersButtonsUI(maxCount, canEdit) {
+      AppState.maxRoomPlayers = maxCount;
+      const guestMaxVal = document.getElementById('guestMaxPlayersValue');
+      const lobbyMaxCountEl = document.getElementById('lobbyMaxPlayersCount');
+      if (guestMaxVal) guestMaxVal.textContent = maxCount;
+      if (lobbyMaxCountEl) lobbyMaxCountEl.textContent = maxCount;
+
+      [2, 3, 4, 5, 6].forEach(num => {
+        const btn = document.getElementById(`maxPBtn-${num}`);
+        if (!btn) return;
+        btn.disabled = !canEdit;
+        if (num === maxCount) {
+          btn.className = canEdit
+            ? 'py-1 rounded-lg bg-amber-500 text-zinc-950 font-black text-[11px] border border-amber-400 transition cursor-pointer'
+            : 'py-1 rounded-lg bg-amber-500/80 text-zinc-950 font-black text-[11px] border border-amber-400 cursor-default';
+        } else {
+          btn.className = canEdit
+            ? 'py-1 rounded-lg bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700 transition cursor-pointer'
+            : 'py-1 rounded-lg bg-zinc-900 text-zinc-500 font-bold text-[11px] border border-zinc-800 opacity-60 cursor-default';
+        }
+      });
+    }
+
+    function selectMaxRoomPlayers(maxCount) {
+      if (OnlineSession.roomId && !OnlineSession.isHost) return;
+      updateMaxPlayersButtonsUI(maxCount, true);
+      // Trim local bots if user lowers maxPlayers below current seat count
+      while (AppState.lobbySeats.length > maxCount && AppState.lobbySeats[AppState.lobbySeats.length - 1].isBot) {
+        AppState.lobbySeats.pop();
+      }
+      renderLobbySeats();
+      if (socket && OnlineSession.connected && OnlineSession.roomId && OnlineSession.isHost) {
+        socket.emit('update_settings', {
+          roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          turnDuration: AppState.turnDuration,
+          maxPlayers: maxCount
+        });
+      }
+      AudioEngine.itemUse();
+    }
+
     function openCreateRoom() {
-      if (AppState.tickets <= 0) {
-        openRewardModal('ticket');
-        return;
-      }
-      if (!socket || !OnlineSession.connected) {
-        alert('جاري الاتصال بالسيرفر الأونلاين، انتظر لحظة ثم أعد المحاولة.');
-        return;
-      }
-      AppState.tickets--;
-      saveProfile();
-      updateTicketsAndStatsUI();
+      // NEVER deduct tickets for creating a room; open Lobby & Room Settings immediately!
       AppState.currentMode = 'private';
       AppState.isDoubleOrNothingRun = false;
       OnlineSession.isHost = true;
@@ -2392,14 +2475,42 @@
       AppState.roomCode = shortCode;
       OnlineSession.roomId = shortCode;
 
-      socket.emit('create_room', {
-        roomId: shortCode,
-        code: shortCode,
-        name: 'Host',
-        turnDuration: AppState.turnDuration,
-        weaponId: AppState.equippedWeapon,
-        skinId: AppState.equippedSkin
+      document.getElementById('generatedRoomCode').textContent = shortCode;
+      document.getElementById('copyFeedback').textContent = '';
+
+      initLobbySeats();
+      setupLobbyUI({
+        badge: `غرفة خاصة أونلاين (حتى ${AppState.maxRoomPlayers} لاعبين)`,
+        title: 'غرفة التحدي الجماعي',
+        subtitle: 'اضبط إعدادات الغرفة وشارك الرمز مع أصدقائك أو أضف بوتات',
+        showCodeBox: true,
+        showHostSettings: true
       });
+      updateDurationButtonsUI(AppState.turnDuration, true);
+      updateMaxPlayersButtonsUI(AppState.maxRoomPlayers, true);
+      renderLobbySeats();
+      showScreen('screen-lobby');
+      AudioEngine.itemUse();
+
+      if (socket && OnlineSession.connected) {
+        AppState.pendingRoomCreate = false;
+        setRoomSyncStatus('متصل بالسيرفر ✓', true);
+        socket.emit('create_room', {
+          roomId: shortCode,
+          code: shortCode,
+          name: 'Host',
+          turnDuration: AppState.turnDuration,
+          maxPlayers: AppState.maxRoomPlayers,
+          weaponId: AppState.equippedWeapon,
+          skinId: AppState.equippedSkin
+        });
+      } else {
+        AppState.pendingRoomCreate = true;
+        setRoomSyncStatus('جاري الربط بالسيرفر...', false);
+        if (socket && typeof socket.connect === 'function') {
+          try { socket.connect(); } catch (e) {}
+        }
+      }
     }
 
     function initLobbySeats() {
@@ -2419,12 +2530,15 @@
     function renderLobbySeats() {
       const grid = document.getElementById('lobbySeatsGrid');
       const countEl = document.getElementById('lobbyPlayerCount');
+      const maxCountEl = document.getElementById('lobbyMaxPlayersCount');
       if (!grid || !countEl) return;
 
+      const maxSlots = AppState.maxRoomPlayers || 6;
       countEl.textContent = AppState.lobbySeats.length;
+      if (maxCountEl) maxCountEl.textContent = maxSlots;
       grid.innerHTML = '';
 
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < maxSlots; i++) {
         const seat = AppState.lobbySeats[i];
         const card = document.createElement('div');
         if (seat) {
@@ -2460,7 +2574,8 @@
     }
 
     function addLobbyBot() {
-      if (AppState.lobbySeats.length >= 6) return;
+      const maxSlots = AppState.maxRoomPlayers || 6;
+      if (AppState.lobbySeats.length >= maxSlots) return;
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('add_bot', { roomId: OnlineSession.roomId });
         return;
@@ -2515,7 +2630,8 @@
         socket.emit('update_settings', {
           roomId: OnlineSession.roomId,
           code: OnlineSession.roomId,
-          turnDuration: seconds
+          turnDuration: seconds,
+          maxPlayers: AppState.maxRoomPlayers
         });
       }
       AudioEngine.itemUse();
