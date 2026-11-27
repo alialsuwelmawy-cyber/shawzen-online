@@ -1192,6 +1192,83 @@
         applyOnlineServerState(state, false);
       });
 
+      socket.on('timer_tick', (data) => {
+        if (!OnlineSession.isOnlineMatch || !AppState.match.active) return;
+        const t = typeof data === 'number' ? data : (data && typeof data.timeLeft === 'number' ? data.timeLeft : null);
+        if (t !== null) {
+          AppState.match.timeLeft = t;
+          updateTimerDisplay();
+        }
+      });
+
+      socket.on('aim_updated', (ev) => {
+        if (!ev || !OnlineSession.isOnlineMatch || !AppState.match.active) return;
+        const target = AppState.match.players.find(p => p.id === ev.targetId);
+        if (target) {
+          aimShotgunAtTarget(target, false);
+        }
+      });
+
+      socket.on('thief_blocked', () => {
+        toggleModal('opponentPickerModal', false);
+        AppState.pendingTargetedItem = null;
+      });
+
+      socket.on('thief_reveal', (data) => {
+        const pending = AppState.pendingTargetedItem;
+        if (!data || !pending || pending.type !== 'thief') return;
+
+        const targetName = data.targetName || 'الخصم';
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (items.length === 0) {
+          AudioEngine.blankClick();
+          document.getElementById('pickerModalSubtitle').textContent = `⚠️ مخزون ${targetName} فارغ تماماً! اختر خصماً آخر.`;
+          return;
+        }
+
+        pending.selectedOppId = data.targetId;
+        AudioEngine.itemUse();
+
+        document.getElementById('pickerModalTitle').textContent = `أدوات ${targetName} المكشوفة`;
+        document.getElementById('pickerModalSubtitle').textContent = 'اختر الأداة التي تريد سرقتها وإضافتها لخاناتك:';
+
+        const listEl = document.getElementById('pickerOpponentsList');
+        const itemsBoxEl = document.getElementById('pickerOpponentItemsBox');
+        const itemsGridEl = document.getElementById('pickerOpponentItemsGrid');
+        const backBtnEl = document.getElementById('pickerBackBtn');
+
+        listEl.classList.add('hidden');
+        itemsBoxEl.classList.remove('hidden');
+        backBtnEl.classList.remove('hidden');
+        itemsGridEl.innerHTML = '';
+
+        items.forEach((oppItemKey, oppItemIdx) => {
+          const itemInfo = ITEMS_DB[oppItemKey];
+          if (!itemInfo) return;
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          itemBtn.className = 'p-2.5 rounded-2xl bg-zinc-950 hover:bg-amber-500/20 border border-zinc-700 hover:border-amber-400 flex flex-col items-center justify-center gap-1 transition cursor-pointer';
+          itemBtn.innerHTML = `
+            <span class="text-2xl">${itemInfo.icon}</span>
+            <span class="text-[10px] font-black text-white text-center leading-tight">${itemInfo.name}</span>
+          `;
+          itemBtn.onclick = () => {
+            toggleModal('opponentPickerModal', false);
+            AppState.pendingTargetedItem = null;
+            socket.emit('use_item', {
+              roomId: OnlineSession.roomId,
+              code: OnlineSession.roomId,
+              playerToken: OnlineSession.playerToken,
+              slotIndex: pending.slotIndex,
+              itemType: 'thief',
+              targetId: data.targetId,
+              stealIndex: oppItemIdx
+            });
+          };
+          itemsGridEl.appendChild(itemBtn);
+        });
+      });
+
       socket.on('action_event', (ev) => {
         handleOnlineActionEvent(ev);
       });
@@ -1266,6 +1343,7 @@
       if (!state || !Array.isArray(state.players)) return;
       const m = AppState.match;
       m.active = true;
+      m.isBusy = Boolean(state.busy);
       m.round = state.round || 1;
       m.maxHp = state.maxHp || 5;
       m.doubleDamage = Boolean(state.doubleDamage);
@@ -1292,6 +1370,7 @@
           cuffed: Boolean(p.cuffed),
           hasShield: Boolean(p.hasShield),
           pillowTurns: p.pillowTurns || 0,
+          itemsCount: typeof p.itemsCount === 'number' ? p.itemsCount : (Array.isArray(p.items) ? p.items.length : 0),
           items: Array.isArray(p.items) ? p.items : []
         };
       });
@@ -1317,7 +1396,8 @@
       updateShotgunBarrelVisual(m.doubleDamage);
       ensureValidSelectedTarget();
 
-      if (isInitial) {
+      const gameScreenEl = document.getElementById('screen-game');
+      if (isInitial || (gameScreenEl && gameScreenEl.classList.contains('hidden'))) {
         showScreen('screen-game');
       }
 
@@ -3127,6 +3207,14 @@
       AudioEngine.blankClick();
       if (getCurrentTurnPlayer() && getCurrentTurnPlayer().isSelf && !m.isBusy) {
         aimShotgunAtTarget(opp, false);
+        if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected && OnlineSession.roomId) {
+          socket.emit('aim_target', {
+            roomId: OnlineSession.roomId,
+            code: OnlineSession.roomId,
+            playerToken: OnlineSession.playerToken,
+            targetId: opp.id
+          });
+        }
       }
       renderGameUI();
     }
@@ -3556,8 +3644,11 @@
         btn.type = 'button';
         btn.className = 'w-full p-3 rounded-2xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-700 hover:border-amber-500/60 flex items-center justify-between transition cursor-pointer';
 
+        const oppItemCount = OnlineSession.isOnlineMatch
+          ? (typeof opp.itemsCount === 'number' ? opp.itemsCount : opp.items.length)
+          : opp.items.length;
         const countBadgeHtml = isThief
-          ? `<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-black">🧰 ${opp.items.length}/7</span>`
+          ? `<span class="px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-black">🧰 ${oppItemCount}/7</span>`
           : '';
 
         btn.innerHTML = `
@@ -3599,12 +3690,12 @@
       if (!targetOpp || targetOpp.hp <= 0) return;
 
       if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected) {
-        toggleModal('opponentPickerModal', false);
-        AppState.pendingTargetedItem = null;
-        socket.emit('use_item', {
+        document.getElementById('pickerModalSubtitle').textContent = `جاري كشف أدوات ${targetOpp.name}...`;
+        socket.emit('thief_inspect', {
           roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           slotIndex: pending.slotIndex,
-          itemType: 'thief',
           targetId: targetOpp.id
         });
         return;
@@ -3694,6 +3785,8 @@
       if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected) {
         socket.emit('use_item', {
           roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           slotIndex: pending.slotIndex,
           itemType: 'swapper',
           targetId: targetOppId
@@ -3747,6 +3840,8 @@
         ensureValidSelectedTarget();
         socket.emit('use_item', {
           roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           slotIndex,
           itemType: itemKey,
           targetId: m.selectedTargetId
@@ -3881,11 +3976,11 @@
 
       if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected) {
         if (mode === 'self') {
-          socket.emit('shoot', { roomId: OnlineSession.roomId, targetId: activeP.id, selfShot: true });
+          socket.emit('shoot', { roomId: OnlineSession.roomId, code: OnlineSession.roomId, playerToken: OnlineSession.playerToken, targetId: activeP.id, selfShot: true });
         } else {
           ensureValidSelectedTarget();
           if (!m.selectedTargetId) return;
-          socket.emit('shoot', { roomId: OnlineSession.roomId, targetId: m.selectedTargetId, selfShot: false });
+          socket.emit('shoot', { roomId: OnlineSession.roomId, code: OnlineSession.roomId, playerToken: OnlineSession.playerToken, targetId: m.selectedTargetId, selfShot: false });
         }
         return;
       }
