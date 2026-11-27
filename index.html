@@ -200,6 +200,27 @@
     <!-- Hidden container for WebRTC remote audio streams -->
     <div id="voiceAudioContainer" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;" aria-hidden="true"></div>
 
+    <!-- Floating Room Invite Notification Banner -->
+    <div id="roomInviteBanner" class="hidden absolute top-14 inset-x-3 z-50 rounded-2xl bg-zinc-900/95 border border-emerald-500/60 p-3 shadow-2xl backdrop-blur-md">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="inviteSenderAvatar" class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-xl shrink-0">😎</div>
+          <div class="min-w-0 text-right">
+            <div class="text-xs font-black text-white truncate">دعوة للعب من <span id="inviteSenderName" class="text-emerald-400">صديقك</span></div>
+            <div class="text-[10px] text-zinc-400 mt-0.5">الغرفة: <span id="inviteRoomCodeText" class="font-mono font-bold text-amber-300">----</span></div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" onclick="acceptRoomInvite()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] cursor-pointer transition">
+            قبول ✓
+          </button>
+          <button type="button" onclick="declineRoomInvite()" class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-red-950/70 border border-zinc-700 text-zinc-300 hover:text-red-300 font-bold text-[11px] cursor-pointer transition">
+            رفض
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Player Hit Blood Vignette Overlay -->
     <div id="selfBloodVignette" class="hidden pointer-events-none absolute inset-0 z-30"
       style="background: radial-gradient(circle at center, transparent 42%, rgba(153, 27, 27, 0.45) 78%, rgba(127, 29, 29, 0.85) 100%);">
@@ -237,31 +258,6 @@
 
     <!-- ==================== SCREEN 1: MAIN MENU ==================== -->
     <main id="screen-menu" class="flex-1 flex flex-col justify-between p-4 overflow-y-auto">
-      <!-- Player Profile & Google Auth Bar -->
-      <div class="mb-2.5 p-2.5 rounded-2xl bg-zinc-900/95 border border-zinc-800 flex items-center justify-between gap-2 shadow-lg">
-        <div onclick="openProfileModal()" class="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1">
-          <div id="menuProfileAvatar" class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
-            😎
-          </div>
-          <div class="min-w-0 text-right">
-            <div class="flex items-center gap-1.5">
-              <span id="menuProfileName" class="text-xs font-black text-white truncate">لاعب</span>
-              <span id="menuGoogleBadge" class="px-1.5 py-0.2 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[8px] font-bold shrink-0">ضيف</span>
-            </div>
-            <div id="menuProfileBio" class="text-[10px] text-zinc-400 truncate mt-0.5">جاهز للتحدي 🔥</div>
-          </div>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" id="menuGoogleSignInBtn" onclick="signInWithGoogle()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[10px] flex items-center gap-1 transition cursor-pointer shadow">
-            <span>G</span>
-            <span>ربط Google</span>
-          </button>
-          <button type="button" onclick="openProfileModal()" class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-amber-300 font-bold text-[10px] transition cursor-pointer" title="تعديل البروفايل">
-            ✏️ بروفايل
-          </button>
-        </div>
-      </div>
-
       <!-- Hero Banner -->
       <div class="relative rounded-3xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-4 text-center shadow-xl">
         <div class="absolute -top-12 -right-12 w-36 h-36 bg-red-600/15 rounded-full blur-2xl pointer-events-none"></div>
@@ -410,6 +406,124 @@
       </div>
     </main>
 
+    <!-- ==================== SCREEN 1B: PERSONAL PROFILE & FRIENDS ==================== -->
+    <section id="screen-profile" class="hidden flex-1 flex flex-col p-4 overflow-y-auto space-y-3">
+      <!-- Profile Summary & Google Card -->
+      <div class="rounded-3xl bg-zinc-900/95 border border-zinc-800 p-4 shadow-xl space-y-3">
+        <div class="flex items-center justify-between gap-2.5">
+          <div class="flex items-center gap-3 min-w-0">
+            <div id="profileHeaderAvatar" class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-2xl shrink-0">
+              😎
+            </div>
+            <div class="min-w-0 text-right">
+              <div class="flex items-center gap-1.5">
+                <span id="profileHeaderName" class="text-sm font-black text-white truncate">لاعب</span>
+                <span id="profileHeaderBadge" class="px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[9px] font-bold shrink-0">ضيف</span>
+              </div>
+              <div id="profileHeaderBio" class="text-[11px] text-zinc-400 truncate mt-0.5">جاهز للتحدي 🔥</div>
+            </div>
+          </div>
+          <button type="button" id="profileGoogleActionBtn" onclick="signInWithGoogle()" class="px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[11px] shrink-0 cursor-pointer transition shadow">
+            ربط Google
+          </button>
+        </div>
+
+        <div class="pt-2.5 border-t border-zinc-800/90 flex items-center justify-between gap-2">
+          <div class="text-right min-w-0">
+            <div id="profileGoogleStatusTitle" class="text-[10px] font-bold text-amber-300">حساب ضيف (محلي فقط)</div>
+            <div id="profileGoogleEmail" class="text-[10px] text-zinc-400 truncate">اربط حسابك بـ Google للحصول على معرّف (ID) وإضافة أصدقاء</div>
+          </div>
+          <div id="profileFriendIdBox" class="hidden items-center gap-1.5 bg-zinc-950 border border-emerald-500/40 px-2.5 py-1 rounded-xl shrink-0">
+            <span class="text-[9px] text-zinc-400 font-bold">ID:</span>
+            <span id="profileFriendIdText" class="text-xs font-mono font-black text-emerald-400 tracking-wider">------</span>
+            <button type="button" onclick="copyMyFriendId()" class="text-[11px] text-zinc-300 hover:text-white cursor-pointer" title="نسخ المعرّف">📋</button>
+          </div>
+        </div>
+        <div id="profileSyncMsg" class="text-[10px] text-emerald-400 font-bold hidden"></div>
+      </div>
+
+      <!-- Sub-Tabs inside Personal Section: Edit Profile vs Friends -->
+      <div class="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-2xl border border-zinc-800">
+        <button type="button" id="profileSubTabEdit" onclick="switchProfileSubTab('edit')" class="py-2 rounded-xl bg-emerald-600 text-white font-black text-xs transition cursor-pointer">
+          ✏️ تعديل البروفايل
+        </button>
+        <button type="button" id="profileSubTabFriends" onclick="switchProfileSubTab('friends')" class="relative py-2 rounded-xl bg-transparent text-zinc-400 hover:text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5">
+          <span>👥 الأصدقاء</span>
+          <span id="profileSubTabReqBadge" class="hidden min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">0</span>
+        </button>
+      </div>
+
+      <!-- SUB-TAB 1: EDIT PROFILE -->
+      <div id="profilePanelEdit" class="rounded-3xl bg-zinc-900/80 border border-zinc-800 p-4 space-y-3 text-right">
+        <div>
+          <label class="block text-[11px] font-bold text-zinc-300 mb-1">الاسم المستعار (يظهر في القسم الشخصي والغرف):</label>
+          <input id="profileNameInput" type="text" maxlength="14" placeholder="اكتب اسمك هنا..."
+            class="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-zinc-300 mb-1">النبذة الشخصية:</label>
+          <input id="profileBioInput" type="text" maxlength="40" placeholder="مثال: جاهز للتحدي 🔥"
+            class="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500" />
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-zinc-300 mb-1.5">اختر صورتك الرمزية (Avatar):</label>
+          <div id="profileAvatarGrid" class="grid grid-cols-6 gap-1.5"></div>
+        </div>
+
+        <button type="button" onclick="saveProfileEdits()" class="btn-3d w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">
+          حفظ التعديلات ✓
+        </button>
+      </div>
+
+      <!-- SUB-TAB 2: FRIENDS & REQUESTS -->
+      <div id="profilePanelFriends" class="hidden space-y-3 text-right">
+        <!-- Guest Lock Notice -->
+        <div id="friendsGuestNotice" class="rounded-3xl bg-zinc-900/90 border border-amber-500/30 p-4 text-center space-y-2.5">
+          <div class="text-3xl">🔐</div>
+          <div class="text-xs font-black text-white">ميزة الأصدقاء تتطلب ربط حساب Google</div>
+          <p class="text-[11px] text-zinc-400">سجّل الدخول بحساب Google لتحصل على ID خاص بك وتتمكن من إضافة أصدقائك ودعوتهم للغرف بضغطة زر.</p>
+          <button type="button" onclick="signInWithGoogle()" class="btn-3d px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-xs">
+            ربط بحساب Google الآن
+          </button>
+        </div>
+
+        <!-- Authenticated Friends Content -->
+        <div id="friendsAuthContent" class="hidden space-y-3">
+          <!-- Add Friend by ID -->
+          <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-3 space-y-2">
+            <div class="text-[11px] font-black text-amber-300">➕ إضافة صديق عبر المعرّف (ID)</div>
+            <div class="flex items-center gap-2">
+              <input id="addFriendIdInput" type="text" maxlength="12" placeholder="أدخل ID الصديق (مثال: A7K9M2)" onkeydown="if(event.key==='Enter') sendFriendRequestById()"
+                class="flex-1 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 font-mono uppercase text-xs font-bold text-amber-300 focus:outline-none focus:border-amber-500" />
+              <button type="button" id="sendFriendReqBtn" onclick="sendFriendRequestById()" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs cursor-pointer shrink-0 transition">
+                إرسال
+              </button>
+            </div>
+            <div id="addFriendFeedback" class="text-[10px] font-bold h-3.5"></div>
+          </div>
+
+          <!-- Incoming Friend Requests -->
+          <div id="incomingRequestsCard" class="hidden rounded-2xl bg-zinc-900/90 border border-emerald-500/35 p-3 space-y-2">
+            <div class="text-[11px] font-black text-emerald-300">📩 طلبات الصداقة الواردة (<span id="incomingRequestsCount">0</span>)</div>
+            <div id="incomingRequestsList" class="space-y-1.5"></div>
+          </div>
+
+          <!-- Friends List -->
+          <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-black text-white">👥 قائمة أصدقائك (<span id="friendsListCount">0</span>)</span>
+              <button type="button" onclick="refreshOnlineFriendsStatus()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer">تحديث 🔄</button>
+            </div>
+            <div id="friendsListContainer" class="space-y-1.5">
+              <div class="text-center text-[11px] text-zinc-500 py-3">لم تقم بإضافة أصدقاء بعد.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ==================== SCREEN 2: LOBBY / MATCHMAKING ==================== -->
     <section id="screen-lobby" class="hidden flex-1 flex flex-col justify-between p-4 overflow-y-auto">
       <div>
@@ -433,10 +547,13 @@
 
         <div id="roomCodeBox" class="mt-3 p-3 rounded-2xl bg-zinc-900/90 border border-zinc-700/80 text-center">
           <div class="text-[10px] text-zinc-400 font-semibold mb-1">رمز الغرفة السري (Room Code)</div>
-          <div class="flex items-center justify-center gap-2">
+          <div class="flex items-center justify-center gap-2 flex-wrap">
             <span id="generatedRoomCode" class="text-xl font-black tracking-[0.2em] text-amber-400 font-mono">----</span>
             <button type="button" onclick="copyRoomCode()" class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-white border border-zinc-600 transition cursor-pointer">
               نسخ 📋
+            </button>
+            <button type="button" id="lobbyInviteFriendBtn" onclick="openInviteFriendsModal()" class="px-2.5 py-1 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 text-xs font-extrabold text-emerald-300 border border-emerald-500/45 transition cursor-pointer">
+              دعوة صديق 📩
             </button>
           </div>
           <div id="copyFeedback" class="text-[10px] text-emerald-400 font-bold mt-1 h-3.5"></div>
@@ -642,6 +759,19 @@
         </div>
       </div>
     </section>
+
+    <!-- ==================== BOTTOM NAVIGATION BAR (PLAY / PERSONAL PROFILE) ==================== -->
+    <nav id="bottomNavBar" class="grid grid-cols-2 gap-2 px-3 py-2 border-t border-zinc-800/90 bg-zinc-950/95 z-30">
+      <button type="button" id="navTabPlay" onclick="switchMainTab('play')" class="py-2 px-3 rounded-2xl bg-red-600/20 border border-red-500/50 text-white font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+        <span class="text-base leading-none">🎮</span>
+        <span>اللعب</span>
+      </button>
+      <button type="button" id="navTabProfile" onclick="switchMainTab('profile')" class="relative py-2 px-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+        <span id="navProfileAvatar" class="text-base leading-none">😎</span>
+        <span id="navProfileName" class="truncate max-w-[110px]">لاعب</span>
+        <span id="navFriendReqBadge" class="hidden absolute -top-1 left-2 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow">0</span>
+      </button>
+    </nav>
 
     <!-- ==================== OVERLAYS & MODALS ==================== -->
 
@@ -1017,61 +1147,26 @@
       </div>
     </div>
 
-    <!-- 12. PLAYER PROFILE & GOOGLE ACCOUNT MODAL -->
-    <div id="profileModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="w-full max-w-sm max-h-[88vh] flex flex-col rounded-3xl bg-zinc-900 border border-emerald-500/40 p-4 text-right shadow-2xl">
+    <!-- 12. INVITE ONLINE FRIENDS TO ROOM MODAL -->
+    <div id="inviteFriendsModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="w-full max-w-xs max-h-[80vh] flex flex-col rounded-3xl bg-zinc-900 border border-emerald-500/40 p-4 text-right shadow-2xl">
         <div class="flex items-center justify-between pb-2.5 border-b border-zinc-800">
           <div class="flex items-center gap-2">
-            <span class="text-lg">👤</span>
-            <h3 class="text-sm font-black text-white">الملف الشخصي وحساب Google</h3>
+            <span class="text-lg">📩</span>
+            <h3 class="text-sm font-black text-white">دعوة صديق للغرفة</h3>
           </div>
-          <button type="button" onclick="toggleModal('profileModal', false)" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">✕</button>
+          <button type="button" onclick="toggleModal('inviteFriendsModal', false)" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">✕</button>
         </div>
 
-        <div class="flex-1 overflow-y-auto py-3 space-y-3 pr-0.5">
-          <!-- Google Account Card -->
-          <div class="p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
-            <div class="flex items-center justify-between gap-2">
-              <div class="min-w-0">
-                <div id="profileGoogleStatusTitle" class="text-xs font-black text-amber-300">حساب ضيف (محلي فقط)</div>
-                <div id="profileGoogleEmail" class="text-[10px] text-zinc-400 truncate mt-0.5">اربط حسابك بـ Google لحفظ تقدمك وأسلحتك سحابياً</div>
-              </div>
-              <button type="button" id="profileGoogleActionBtn" onclick="signInWithGoogle()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[11px] shrink-0 cursor-pointer transition">
-                ربط بـ Google
-              </button>
-            </div>
-            <div id="profileSyncMsg" class="text-[10px] text-emerald-400 font-bold mt-1.5 hidden"></div>
-          </div>
+        <p class="text-[11px] text-zinc-400 mt-2">الأصدقاء المتصلون الآن يمكنهم قبول الدعوة والدخول مباشرة بدون كتابة الكود:</p>
 
-          <!-- Display Name -->
-          <div>
-            <label class="block text-[11px] font-bold text-zinc-300 mb-1">الاسم المستعار (يظهر في الغرف):</label>
-            <input id="profileNameInput" type="text" maxlength="14" placeholder="اكتب اسمك هنا..."
-              class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
-          </div>
+        <div id="inviteFriendsList" class="flex-1 overflow-y-auto my-3 space-y-2 min-h-[120px]"></div>
 
-          <!-- Bio / Status -->
-          <div>
-            <label class="block text-[11px] font-bold text-zinc-300 mb-1">النبذة الشخصية:</label>
-            <input id="profileBioInput" type="text" maxlength="40" placeholder="مثال: جاهز للتحدي 🔥"
-              class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500" />
-          </div>
+        <div id="inviteModalFeedback" class="text-[10px] text-emerald-400 font-bold text-center h-4 mb-1"></div>
 
-          <!-- Avatar Picker -->
-          <div>
-            <label class="block text-[11px] font-bold text-zinc-300 mb-1.5">اختر صورتك الرمزية (Avatar):</label>
-            <div id="profileAvatarGrid" class="grid grid-cols-6 gap-1.5"></div>
-          </div>
-        </div>
-
-        <div class="pt-2.5 border-t border-zinc-800 flex gap-2">
-          <button type="button" onclick="saveProfileEdits()" class="btn-3d flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">
-            حفظ التعديلات ✓
-          </button>
-          <button type="button" onclick="toggleModal('profileModal', false)" class="px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
-            إغلاق
-          </button>
-        </div>
+        <button type="button" onclick="toggleModal('inviteFriendsModal', false)" class="w-full py-2.5 rounded-xl bg-zinc-800 text-white font-bold text-xs cursor-pointer">
+          إغلاق
+        </button>
       </div>
     </div>
 
@@ -1279,6 +1374,10 @@
         if (typeof VoiceManager !== 'undefined' && VoiceManager.rejoinIfActive) {
           setTimeout(() => VoiceManager.rejoinIfActive(), 800);
         }
+
+        if (typeof registerOnlinePresence === 'function') {
+          registerOnlinePresence();
+        }
       });
 
       socket.on('disconnect', () => {
@@ -1438,6 +1537,42 @@
       socket.on('voice_status_updated', (data) => {
         if (!data) return;
         VoiceManager.handleVoiceStatusUpdated(data);
+      });
+
+      socket.on('friend_presence_changed', (data) => {
+        if (!data || !data.uid) return;
+        if (data.online) {
+          FriendsState.onlineUids.add(data.uid);
+        } else {
+          FriendsState.onlineUids.delete(data.uid);
+        }
+        renderFriendsListUI();
+        const invModal = document.getElementById('inviteFriendsModal');
+        if (invModal && !invModal.classList.contains('hidden')) {
+          renderInviteFriendsModalList();
+        }
+      });
+
+      socket.on('online_friends_list', (data) => {
+        if (!data || !Array.isArray(data.onlineUids)) return;
+        FriendsState.onlineUids = new Set(data.onlineUids);
+        renderFriendsListUI();
+        const invModal = document.getElementById('inviteFriendsModal');
+        if (invModal && !invModal.classList.contains('hidden')) {
+          renderInviteFriendsModalList();
+        }
+      });
+
+      socket.on('room_invite_received', (invite) => {
+        if (!invite || !invite.roomCode) return;
+        showIncomingRoomInvite(invite);
+      });
+
+      socket.on('invite_declined', (data) => {
+        const guestName = (data && data.guestName) ? data.guestName : 'صديقك';
+        setRoomSyncStatus(`رفض ${guestName} الدعوة`, false);
+        const fb = document.getElementById('inviteModalFeedback');
+        if (fb) fb.textContent = `اعتذر ${guestName} عن الدعوة حالياً.`;
       });
 
       socket.on('thief_blocked', () => {
@@ -2501,12 +2636,65 @@
      * 6. NAVIGATION, STATS & ARMORY (5 WEAPONS + 6 SKINS)
      */
     function showScreen(screenId) {
-      ['screen-menu', 'screen-lobby', 'screen-game'].forEach(id => {
+      ['screen-menu', 'screen-profile', 'screen-lobby', 'screen-game'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
       const target = document.getElementById(screenId);
       if (target) target.classList.remove('hidden');
+
+      const nav = document.getElementById('bottomNavBar');
+      if (nav) {
+        if (screenId === 'screen-menu' || screenId === 'screen-profile') {
+          nav.classList.remove('hidden');
+        } else {
+          nav.classList.add('hidden');
+        }
+      }
+      updateBottomNavStyles(screenId);
+    }
+
+    function updateBottomNavStyles(activeScreenId) {
+      const tabPlay = document.getElementById('navTabPlay');
+      const tabProf = document.getElementById('navTabProfile');
+      if (!tabPlay || !tabProf) return;
+      if (activeScreenId === 'screen-profile') {
+        tabPlay.className = 'py-2 px-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer';
+        tabProf.className = 'relative py-2 px-3 rounded-2xl bg-emerald-600/20 border border-emerald-500/50 text-white font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer';
+      } else {
+        tabPlay.className = 'py-2 px-3 rounded-2xl bg-red-600/20 border border-red-500/50 text-white font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer';
+        tabProf.className = 'relative py-2 px-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer';
+      }
+    }
+
+    function switchMainTab(tab) {
+      AudioEngine.blankClick();
+      if (tab === 'profile') {
+        openProfileModal();
+      } else {
+        showScreen('screen-menu');
+      }
+    }
+
+    function switchProfileSubTab(subTab) {
+      const btnEdit = document.getElementById('profileSubTabEdit');
+      const btnFriends = document.getElementById('profileSubTabFriends');
+      const panelEdit = document.getElementById('profilePanelEdit');
+      const panelFriends = document.getElementById('profilePanelFriends');
+      if (!btnEdit || !btnFriends || !panelEdit || !panelFriends) return;
+
+      if (subTab === 'friends') {
+        btnFriends.className = 'relative py-2 rounded-xl bg-emerald-600 text-white font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5';
+        btnEdit.className = 'py-2 rounded-xl bg-transparent text-zinc-400 hover:text-white font-bold text-xs transition cursor-pointer';
+        panelEdit.classList.add('hidden');
+        panelFriends.classList.remove('hidden');
+        refreshOnlineFriendsStatus();
+      } else {
+        btnEdit.className = 'py-2 rounded-xl bg-emerald-600 text-white font-black text-xs transition cursor-pointer';
+        btnFriends.className = 'relative py-2 rounded-xl bg-transparent text-zinc-400 hover:text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5';
+        panelFriends.classList.add('hidden');
+        panelEdit.classList.remove('hidden');
+      }
     }
 
     function toggleModal(modalId, show) {
@@ -5389,8 +5577,54 @@
       VoiceManager.toggleSelfMic();
     }
 
-    // ==================== FIREBASE AUTH & FIRESTORE PROFILE SERVICE ====================
+    // ==================== FIREBASE AUTH, FIRESTORE PROFILE & FRIENDS SYSTEM ====================
     const PROFILE_AVATARS = ['😎', '🤠', '🥷', '👑', '🦁', '🐺', '🦊', '👾', '🤖', '🎭', '💀', '🔥'];
+
+    const FriendsState = {
+      friendId: '',
+      friendUids: [],
+      friendsData: [],        // [{ uid, friendId, profileName, profileAvatar, profileBio }]
+      incomingRequests: [],   // [{ id, fromUid, fromName, fromAvatar, fromFriendId }]
+      onlineUids: new Set(),
+      pendingInvite: null,
+      inviteHideTimer: null,
+      unsubUserDoc: null,
+      unsubRequests: null
+    };
+
+    function generateFriendIdCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let out = '';
+      for (let i = 0; i < 6; i++) {
+        out += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return out;
+    }
+
+    function registerOnlinePresence() {
+      if (!socket || !OnlineSession.connected || !AppState.googleUser) return;
+      socket.emit('register_user', {
+        uid: AppState.googleUser.uid,
+        friendId: FriendsState.friendId || '',
+        name: AppState.profileName || 'لاعب',
+        avatar: AppState.profileAvatar || '😎'
+      });
+      refreshOnlineFriendsStatus();
+    }
+
+    function refreshOnlineFriendsStatus() {
+      if (!socket || !OnlineSession.connected || FriendsState.friendUids.length === 0) return;
+      socket.emit('get_online_friends', { friendUids: FriendsState.friendUids }, (res) => {
+        if (res && Array.isArray(res.onlineUids)) {
+          FriendsState.onlineUids = new Set(res.onlineUids);
+          renderFriendsListUI();
+          const invModal = document.getElementById('inviteFriendsModal');
+          if (invModal && !invModal.classList.contains('hidden')) {
+            renderInviteFriendsModalList();
+          }
+        }
+      });
+    }
 
     const FirebaseService = (() => {
       const firebaseConfig = {
@@ -5418,6 +5652,7 @@
           ready = true;
 
           auth.onAuthStateChanged(async (user) => {
+            detachFriendsListeners();
             if (user) {
               AppState.googleUser = {
                 uid: user.uid,
@@ -5425,11 +5660,93 @@
                 displayName: user.displayName || ''
               };
               await loadFromCloud(user);
+              attachFriendsListeners(user.uid);
+              registerOnlinePresence();
             } else {
               AppState.googleUser = null;
+              FriendsState.friendId = '';
+              FriendsState.friendUids = [];
+              FriendsState.friendsData = [];
+              FriendsState.incomingRequests = [];
+              FriendsState.onlineUids.clear();
+              if (socket && OnlineSession.connected) {
+                socket.emit('unregister_user');
+              }
             }
             updateProfileUI();
+            renderFriendsListUI();
+            renderIncomingRequestsUI();
           });
+        } catch (e) {}
+      }
+
+      function detachFriendsListeners() {
+        if (FriendsState.unsubUserDoc) {
+          try { FriendsState.unsubUserDoc(); } catch (e) {}
+          FriendsState.unsubUserDoc = null;
+        }
+        if (FriendsState.unsubRequests) {
+          try { FriendsState.unsubRequests(); } catch (e) {}
+          FriendsState.unsubRequests = null;
+        }
+      }
+
+      function attachFriendsListeners(uid) {
+        if (!ready || !db || !uid) return;
+        detachFriendsListeners();
+
+        FriendsState.unsubUserDoc = db.collection('users').doc(uid).onSnapshot((snap) => {
+          if (!snap.exists) return;
+          const data = snap.data() || {};
+          if (data.friendId && data.friendId !== FriendsState.friendId) {
+            FriendsState.friendId = data.friendId;
+            updateProfileUI();
+          }
+          const newFriendUids = Array.isArray(data.friends) ? data.friends : [];
+          FriendsState.friendUids = newFriendUids;
+          fetchFriendsProfiles(newFriendUids);
+        }, () => {});
+
+        FriendsState.unsubRequests = db.collection('friendRequests')
+          .where('toUid', '==', uid)
+          .onSnapshot((qs) => {
+            const pending = [];
+            qs.forEach((doc) => {
+              const d = doc.data();
+              if (d && d.status === 'pending') {
+                pending.push({ id: doc.id, ...d });
+              }
+            });
+            FriendsState.incomingRequests = pending;
+            renderIncomingRequestsUI();
+          }, () => {});
+      }
+
+      async function fetchFriendsProfiles(uids) {
+        if (!ready || !db) return;
+        if (!Array.isArray(uids) || uids.length === 0) {
+          FriendsState.friendsData = [];
+          renderFriendsListUI();
+          return;
+        }
+        try {
+          const docs = await Promise.all(
+            uids.map((fUid) => db.collection('users').doc(fUid).get().catch(() => null))
+          );
+          FriendsState.friendsData = docs
+            .filter((d) => d && d.exists)
+            .map((d) => {
+              const data = d.data() || {};
+              return {
+                uid: d.id,
+                friendId: data.friendId || '------',
+                profileName: data.profileName || 'لاعب',
+                profileAvatar: data.profileAvatar || '😎',
+                profileBio: data.profileBio || ''
+              };
+            });
+          renderFriendsListUI();
+          refreshOnlineFriendsStatus();
         } catch (e) {}
       }
 
@@ -5438,8 +5755,10 @@
         try {
           const docRef = db.collection('users').doc(user.uid);
           const snap = await docRef.get();
+          let assignedFriendId = '';
           if (snap.exists) {
             const data = snap.data();
+            assignedFriendId = data.friendId || generateFriendIdCode();
             if (typeof data.profileName === 'string' && data.profileName.trim()) AppState.profileName = data.profileName.trim().slice(0, 14);
             if (typeof data.profileAvatar === 'string' && data.profileAvatar.trim()) AppState.profileAvatar = data.profileAvatar.trim();
             if (typeof data.profileBio === 'string') AppState.profileBio = data.profileBio.trim().slice(0, 40);
@@ -5459,12 +5778,20 @@
             if (typeof data.equippedSkin === 'string' && AppState.unlockedSkins.includes(data.equippedSkin)) {
               AppState.equippedSkin = data.equippedSkin;
             }
+            FriendsState.friendId = assignedFriendId;
+            FriendsState.friendUids = Array.isArray(data.friends) ? data.friends : [];
             saveProfile(false);
+            if (!data.friendId) {
+              await docRef.set({ friendId: assignedFriendId }, { merge: true });
+            }
           } else {
+            assignedFriendId = generateFriendIdCode();
+            FriendsState.friendId = assignedFriendId;
+            FriendsState.friendUids = [];
             if (AppState.profileName === 'لاعب' && user.displayName) {
               AppState.profileName = user.displayName.trim().slice(0, 14);
             }
-            await saveToCloud(buildProfileSnapshot());
+            await saveToCloud({ ...buildProfileSnapshot(), friendId: assignedFriendId, friends: [] });
           }
           updateTicketsAndStatsUI();
           updateTableActiveWeaponVisual();
@@ -5475,11 +5802,95 @@
       async function saveToCloud(snapshot) {
         if (!ready || !db || !AppState.googleUser) return;
         try {
-          await db.collection('users').doc(AppState.googleUser.uid).set({
+          const payload = {
             ...snapshot,
             email: AppState.googleUser.email,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          if (FriendsState.friendId) payload.friendId = FriendsState.friendId;
+          await db.collection('users').doc(AppState.googleUser.uid).set(payload, { merge: true });
+          registerOnlinePresence();
+        } catch (e) {}
+      }
+
+      async function sendFriendRequest(targetFriendId) {
+        if (!ready || !db || !AppState.googleUser) {
+          return { ok: false, msg: 'يجب ربط حسابك بـ Google أولاً.' };
+        }
+        const cleanId = normalizeRoomCode(targetFriendId);
+        if (cleanId.length < 4) {
+          return { ok: false, msg: 'الرجاء إدخال معرّف (ID) صحيح.' };
+        }
+        if (cleanId === FriendsState.friendId) {
+          return { ok: false, msg: 'لا يمكنك إضافة نفسك كصديق!' };
+        }
+        try {
+          const qs = await db.collection('users').where('friendId', '==', cleanId).limit(1).get();
+          if (qs.empty) {
+            return { ok: false, msg: 'لم يتم العثور على لاعب بهذا المعرّف (ID).' };
+          }
+          const targetDoc = qs.docs[0];
+          const targetUid = targetDoc.id;
+          const targetData = targetDoc.data() || {};
+
+          if (FriendsState.friendUids.includes(targetUid)) {
+            return { ok: false, msg: `${targetData.profileName || 'هذا اللاعب'} موجود بالفعل في قائمة أصدقائك.` };
+          }
+
+          const reqDocId = `${AppState.googleUser.uid}_${targetUid}`;
+          await db.collection('friendRequests').doc(reqDocId).set({
+            fromUid: AppState.googleUser.uid,
+            fromName: AppState.profileName || 'لاعب',
+            fromAvatar: AppState.profileAvatar || '😎',
+            fromFriendId: FriendsState.friendId || '',
+            toUid: targetUid,
+            status: 'pending',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          return { ok: true, msg: `✓ تم إرسال طلب الصداقة إلى ${targetData.profileName || cleanId}!` };
+        } catch (err) {
+          return { ok: false, msg: 'حدث خطأ أثناء إرسال الطلب، حاول مجدداً.' };
+        }
+      }
+
+      async function acceptFriendRequest(req) {
+        if (!ready || !db || !AppState.googleUser || !req) return;
+        const myUid = AppState.googleUser.uid;
+        try {
+          const batch = db.batch();
+          batch.set(db.collection('users').doc(myUid), {
+            friends: firebase.firestore.FieldValue.arrayUnion(req.fromUid)
           }, { merge: true });
+          batch.set(db.collection('users').doc(req.fromUid), {
+            friends: firebase.firestore.FieldValue.arrayUnion(myUid)
+          }, { merge: true });
+          batch.delete(db.collection('friendRequests').doc(req.id));
+          await batch.commit();
+          AudioEngine.healSound();
+        } catch (e) {}
+      }
+
+      async function rejectFriendRequest(req) {
+        if (!ready || !db || !req) return;
+        try {
+          await db.collection('friendRequests').doc(req.id).delete();
+          AudioEngine.blankClick();
+        } catch (e) {}
+      }
+
+      async function removeFriend(friendUid) {
+        if (!ready || !db || !AppState.googleUser || !friendUid) return;
+        const myUid = AppState.googleUser.uid;
+        try {
+          const batch = db.batch();
+          batch.set(db.collection('users').doc(myUid), {
+            friends: firebase.firestore.FieldValue.arrayRemove(friendUid)
+          }, { merge: true });
+          batch.set(db.collection('users').doc(friendUid), {
+            friends: firebase.firestore.FieldValue.arrayRemove(myUid)
+          }, { merge: true });
+          await batch.commit();
+          AudioEngine.blankClick();
         } catch (e) {}
       }
 
@@ -5511,7 +5922,16 @@
         } catch (e) {}
       }
 
-      return { init, saveToCloud, signIn, signOut };
+      return {
+        init,
+        saveToCloud,
+        signIn,
+        signOut,
+        sendFriendRequest,
+        acceptFriendRequest,
+        rejectFriendRequest,
+        removeFriend
+      };
     })();
 
     function showProfileSyncMsg(text, isError = false) {
@@ -5519,65 +5939,102 @@
       if (!el) return;
       el.textContent = text;
       el.className = isError
-        ? 'text-[10px] text-red-400 font-bold mt-1.5'
-        : 'text-[10px] text-emerald-400 font-bold mt-1.5';
+        ? 'text-[10px] text-red-400 font-bold'
+        : 'text-[10px] text-emerald-400 font-bold';
       el.classList.remove('hidden');
       clearTimeout(el._t);
       el._t = setTimeout(() => el.classList.add('hidden'), 4000);
     }
 
+    function copyMyFriendId() {
+      if (!FriendsState.friendId) return;
+      const temp = document.createElement('input');
+      temp.value = FriendsState.friendId;
+      document.body.appendChild(temp);
+      temp.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(temp);
+      showProfileSyncMsg(`✓ تم نسخ معرّفك الشخصي: ${FriendsState.friendId}`);
+    }
+
     function updateProfileUI() {
-      const mAvatar = document.getElementById('menuProfileAvatar');
-      const mName = document.getElementById('menuProfileName');
-      const mBio = document.getElementById('menuProfileBio');
-      const mBadge = document.getElementById('menuGoogleBadge');
-      const mSignInBtn = document.getElementById('menuGoogleSignInBtn');
+      const displayName = AppState.profileName || 'لاعب';
+      const displayAvatar = AppState.profileAvatar || '😎';
+      const displayBio = AppState.profileBio || 'جاهز للتحدي 🔥';
 
-      if (mAvatar) mAvatar.textContent = AppState.profileAvatar || '😎';
-      if (mName) mName.textContent = AppState.profileName || 'لاعب';
-      if (mBio) mBio.textContent = AppState.profileBio || 'جاهز للتحدي 🔥';
+      // Bottom Nav Tab (Player Personal Name + Avatar)
+      const navAvatar = document.getElementById('navProfileAvatar');
+      const navName = document.getElementById('navProfileName');
+      if (navAvatar) navAvatar.textContent = displayAvatar;
+      if (navName) navName.textContent = displayName;
 
+      // Profile Screen Header
+      const pAvatar = document.getElementById('profileHeaderAvatar');
+      const pName = document.getElementById('profileHeaderName');
+      const pBio = document.getElementById('profileHeaderBio');
+      const pBadge = document.getElementById('profileHeaderBadge');
+      if (pAvatar) pAvatar.textContent = displayAvatar;
+      if (pName) pName.textContent = displayName;
+      if (pBio) pBio.textContent = displayBio;
+
+      // Active Game Self Display
       const gAvatar = document.getElementById('gameSelfAvatarIcon');
       const gName = document.getElementById('gameSelfNameText');
-      if (gAvatar) gAvatar.textContent = AppState.profileAvatar || '😎';
-      if (gName) gName.textContent = AppState.profileName || 'أنت';
+      if (gAvatar) gAvatar.textContent = displayAvatar;
+      if (gName) gName.textContent = displayName;
 
+      // Google Status & Friend ID
       const statusTitle = document.getElementById('profileGoogleStatusTitle');
       const statusEmail = document.getElementById('profileGoogleEmail');
       const actionBtn = document.getElementById('profileGoogleActionBtn');
+      const idBox = document.getElementById('profileFriendIdBox');
+      const idText = document.getElementById('profileFriendIdText');
+      const guestNotice = document.getElementById('friendsGuestNotice');
+      const authContent = document.getElementById('friendsAuthContent');
 
       if (AppState.googleUser) {
-        if (mBadge) {
-          mBadge.textContent = 'Google ✓';
-          mBadge.className = 'px-1.5 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[8px] font-bold shrink-0';
+        if (pBadge) {
+          pBadge.textContent = 'Google ✓';
+          pBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold shrink-0';
         }
-        if (mSignInBtn) mSignInBtn.classList.add('hidden');
         if (statusTitle) {
           statusTitle.textContent = 'مرتبط بحساب Google ✓';
-          statusTitle.className = 'text-xs font-black text-emerald-400';
+          statusTitle.className = 'text-[10px] font-black text-emerald-400';
         }
         if (statusEmail) statusEmail.textContent = AppState.googleUser.email || 'الحفظ السحابي مفعّل';
         if (actionBtn) {
           actionBtn.textContent = 'تسجيل الخروج';
           actionBtn.onclick = signOutGoogle;
-          actionBtn.className = 'px-3 py-1.5 rounded-xl bg-red-950/70 hover:bg-red-900/80 border border-red-500/50 text-red-300 font-bold text-[11px] shrink-0 cursor-pointer transition';
+          actionBtn.className = 'px-3 py-2 rounded-xl bg-red-950/70 hover:bg-red-900/80 border border-red-500/50 text-red-300 font-bold text-[11px] shrink-0 cursor-pointer transition';
         }
+        if (idBox && idText && FriendsState.friendId) {
+          idText.textContent = FriendsState.friendId;
+          idBox.classList.remove('hidden');
+          idBox.classList.add('flex');
+        }
+        if (guestNotice) guestNotice.classList.add('hidden');
+        if (authContent) authContent.classList.remove('hidden');
       } else {
-        if (mBadge) {
-          mBadge.textContent = 'ضيف';
-          mBadge.className = 'px-1.5 py-0.2 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[8px] font-bold shrink-0';
+        if (pBadge) {
+          pBadge.textContent = 'ضيف';
+          pBadge.className = 'px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[9px] font-bold shrink-0';
         }
-        if (mSignInBtn) mSignInBtn.classList.remove('hidden');
         if (statusTitle) {
           statusTitle.textContent = 'حساب ضيف (محلي فقط)';
-          statusTitle.className = 'text-xs font-black text-amber-300';
+          statusTitle.className = 'text-[10px] font-black text-amber-300';
         }
-        if (statusEmail) statusEmail.textContent = 'اربط حسابك بـ Google لحفظ تقدمك وأسلحتك سحابياً';
+        if (statusEmail) statusEmail.textContent = 'اربط حسابك بـ Google للحصول على معرّف (ID) وإضافة أصدقاء';
         if (actionBtn) {
-          actionBtn.textContent = 'ربط بـ Google';
+          actionBtn.textContent = 'ربط Google';
           actionBtn.onclick = signInWithGoogle;
-          actionBtn.className = 'px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[11px] shrink-0 cursor-pointer transition';
+          actionBtn.className = 'px-3 py-2 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[11px] shrink-0 cursor-pointer transition shadow';
         }
+        if (idBox) {
+          idBox.classList.add('hidden');
+          idBox.classList.remove('flex');
+        }
+        if (guestNotice) guestNotice.classList.remove('hidden');
+        if (authContent) authContent.classList.add('hidden');
       }
     }
 
@@ -5589,7 +6046,7 @@
       if (bioInp) bioInp.value = AppState.profileBio || '';
       renderProfileAvatarGrid();
       updateProfileUI();
-      toggleModal('profileModal', true);
+      showScreen('screen-profile');
     }
 
     function renderProfileAvatarGrid() {
@@ -5626,7 +6083,305 @@
       saveProfile(true);
       updateProfileUI();
       AudioEngine.healSound();
-      toggleModal('profileModal', false);
+      showProfileSyncMsg('✓ تم حفظ تعديلات بروفايلك بنجاح!');
+    }
+
+    async function sendFriendRequestById() {
+      const inp = document.getElementById('addFriendIdInput');
+      const fb = document.getElementById('addFriendFeedback');
+      const btn = document.getElementById('sendFriendReqBtn');
+      if (!inp || !fb) return;
+
+      const rawId = inp.value.trim();
+      if (!rawId) {
+        fb.className = 'text-[10px] font-bold text-red-400 h-3.5';
+        fb.textContent = 'أدخل معرّف الصديق أولاً.';
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      fb.className = 'text-[10px] font-bold text-amber-300 h-3.5';
+      fb.textContent = 'جاري البحث وإرسال الطلب...';
+
+      const res = await FirebaseService.sendFriendRequest(rawId);
+      if (btn) btn.disabled = false;
+
+      if (res.ok) {
+        inp.value = '';
+        AudioEngine.healSound();
+        fb.className = 'text-[10px] font-bold text-emerald-400 h-3.5';
+      } else {
+        AudioEngine.blankClick();
+        fb.className = 'text-[10px] font-bold text-red-400 h-3.5';
+      }
+      fb.textContent = res.msg;
+    }
+
+    function renderIncomingRequestsUI() {
+      const reqs = FriendsState.incomingRequests || [];
+      const count = reqs.length;
+
+      const navBadge = document.getElementById('navFriendReqBadge');
+      const subBadge = document.getElementById('profileSubTabReqBadge');
+      [navBadge, subBadge].forEach((b) => {
+        if (!b) return;
+        if (count > 0) {
+          b.textContent = String(count);
+          b.classList.remove('hidden');
+        } else {
+          b.classList.add('hidden');
+        }
+      });
+
+      const card = document.getElementById('incomingRequestsCard');
+      const countEl = document.getElementById('incomingRequestsCount');
+      const listEl = document.getElementById('incomingRequestsList');
+      if (!card || !listEl) return;
+
+      if (countEl) countEl.textContent = String(count);
+      if (count === 0) {
+        card.classList.add('hidden');
+        listEl.innerHTML = '';
+        return;
+      }
+
+      card.classList.remove('hidden');
+      listEl.innerHTML = '';
+      reqs.forEach((req) => {
+        const row = document.createElement('div');
+        row.className = 'p-2 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-2';
+        row.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-lg">${req.fromAvatar || '😎'}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-white truncate">${req.fromName || 'لاعب'}</div>
+              <div class="text-[9px] font-mono text-zinc-400">ID: ${req.fromFriendId || '------'}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" class="accept-btn px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer">قبول ✓</button>
+            <button type="button" class="reject-btn px-2 py-1 rounded-lg bg-zinc-800 hover:bg-red-950 text-zinc-300 hover:text-red-300 text-[10px] font-bold cursor-pointer">✕</button>
+          </div>
+        `;
+        row.querySelector('.accept-btn').onclick = () => FirebaseService.acceptFriendRequest(req);
+        row.querySelector('.reject-btn').onclick = () => FirebaseService.rejectFriendRequest(req);
+        listEl.appendChild(row);
+      });
+    }
+
+    function renderFriendsListUI() {
+      const container = document.getElementById('friendsListContainer');
+      const countEl = document.getElementById('friendsListCount');
+      if (!container) return;
+
+      const friends = [...(FriendsState.friendsData || [])];
+      if (countEl) countEl.textContent = String(friends.length);
+
+      if (friends.length === 0) {
+        container.innerHTML = '<div class="text-center text-[11px] text-zinc-500 py-3">لم تقم بإضافة أصدقاء بعد.</div>';
+        return;
+      }
+
+      // Sort online friends first
+      friends.sort((a, b) => {
+        const aOn = FriendsState.onlineUids.has(a.uid) ? 1 : 0;
+        const bOn = FriendsState.onlineUids.has(b.uid) ? 1 : 0;
+        return bOn - aOn;
+      });
+
+      container.innerHTML = '';
+      friends.forEach((fr) => {
+        const isOnline = FriendsState.onlineUids.has(fr.uid);
+        const row = document.createElement('div');
+        row.className = 'p-2 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-2';
+        row.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="relative text-lg">
+              ${fr.profileAvatar}
+              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-zinc-600'} border border-zinc-950"></span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-white truncate">${fr.profileName}</div>
+              <div class="text-[9px] ${isOnline ? 'text-emerald-400' : 'text-zinc-500'} font-bold">${isOnline ? 'متصل الآن 🟢' : 'غير متصل'} • <span class="font-mono text-zinc-400">${fr.friendId}</span></div>
+            </div>
+          </div>
+          <button type="button" class="remove-fr-btn px-2 py-1 rounded-lg bg-zinc-900 hover:bg-red-950/70 border border-zinc-800 text-zinc-400 hover:text-red-300 text-[10px] font-bold cursor-pointer" title="إزالة الصديق">إزالة</button>
+        `;
+        row.querySelector('.remove-fr-btn').onclick = () => FirebaseService.removeFriend(fr.uid);
+        container.appendChild(row);
+      });
+    }
+
+    // ==================== ROOM INVITE MODAL & NOTIFICATION ====================
+    function openInviteFriendsModal() {
+      const fb = document.getElementById('inviteModalFeedback');
+      if (fb) fb.textContent = '';
+      refreshOnlineFriendsStatus();
+      renderInviteFriendsModalList();
+      toggleModal('inviteFriendsModal', true);
+    }
+
+    function renderInviteFriendsModalList() {
+      const listEl = document.getElementById('inviteFriendsList');
+      if (!listEl) return;
+
+      if (!AppState.googleUser) {
+        listEl.innerHTML = `
+          <div class="text-center py-6 space-y-2">
+            <div class="text-2xl">🔐</div>
+            <div class="text-xs font-bold text-zinc-300">اربط حسابك بـ Google أولاً لإضافة الأصدقاء ودعوتهم للغرفة.</div>
+          </div>
+        `;
+        return;
+      }
+
+      const friends = [...(FriendsState.friendsData || [])];
+      if (friends.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center py-6 space-y-1.5">
+            <div class="text-2xl">👥</div>
+            <div class="text-xs font-bold text-zinc-300">لا يوجد أصدقاء في قائمتك بعد.</div>
+            <div class="text-[10px] text-zinc-400">أضف أصدقاءك عبر الـ ID من قسمك الشخصي.</div>
+          </div>
+        `;
+        return;
+      }
+
+      const onlineFriends = friends.filter((f) => FriendsState.onlineUids.has(f.uid));
+      const offlineFriends = friends.filter((f) => !FriendsState.onlineUids.has(f.uid));
+      const ordered = [...onlineFriends, ...offlineFriends];
+
+      listEl.innerHTML = '';
+      if (onlineFriends.length === 0) {
+        const note = document.createElement('div');
+        note.className = 'text-center text-[11px] text-amber-300 bg-amber-950/30 border border-amber-500/30 rounded-xl p-2 mb-2';
+        note.textContent = 'لا يوجد أصدقاء متصلون حالياً';
+        listEl.appendChild(note);
+      }
+
+      ordered.forEach((fr) => {
+        const isOnline = FriendsState.onlineUids.has(fr.uid);
+        const row = document.createElement('div');
+        row.className = `p-2.5 rounded-2xl border flex items-center justify-between gap-2 ${isOnline ? 'bg-zinc-950 border-emerald-500/35' : 'bg-zinc-950/60 border-zinc-800 opacity-60'}`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-xl">${fr.profileAvatar}</span>
+            <div class="min-w-0">
+              <div class="text-xs font-black text-white truncate">${fr.profileName}</div>
+              <div class="text-[9px] font-bold ${isOnline ? 'text-emerald-400' : 'text-zinc-500'}">${isOnline ? 'متصل الآن 🟢' : 'غير متصل ⚫'}</div>
+            </div>
+          </div>
+          <button type="button" ${isOnline ? '' : 'disabled'} class="invite-btn px-3 py-1.5 rounded-xl ${isOnline ? 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer' : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'} text-[11px] font-black transition shrink-0">
+            ${isOnline ? 'دعوة 📩' : 'أوفلاين'}
+          </button>
+        `;
+        if (isOnline) {
+          const btn = row.querySelector('.invite-btn');
+          btn.onclick = () => sendRoomInviteToFriend(fr, btn);
+        }
+        listEl.appendChild(row);
+      });
+    }
+
+    function sendRoomInviteToFriend(friend, btnEl) {
+      const code = OnlineSession.roomId || AppState.roomCode;
+      if (!socket || !OnlineSession.connected || !code) return;
+
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = 'جاري...';
+      }
+      socket.emit('send_room_invite', {
+        targetUid: friend.uid,
+        roomCode: code,
+        hostName: AppState.profileName || 'صديقك',
+        hostAvatar: AppState.profileAvatar || '😎',
+        fromUid: AppState.googleUser ? AppState.googleUser.uid : null
+      }, (ack) => {
+        const fb = document.getElementById('inviteModalFeedback');
+        if (ack && ack.ok) {
+          AudioEngine.healSound();
+          if (btnEl) {
+            btnEl.textContent = 'تم الإرسال ✓';
+            btnEl.className = 'px-3 py-1.5 rounded-xl bg-zinc-800 text-emerald-300 text-[11px] font-black shrink-0';
+          }
+          if (fb) fb.textContent = `تم إرسال الدعوة إلى ${friend.profileName} ✓`;
+        } else {
+          AudioEngine.blankClick();
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = 'دعوة 📩';
+          }
+          if (fb) fb.textContent = (ack && ack.message) ? ack.message : 'تعذر إرسال الدعوة.';
+        }
+      });
+    }
+
+    function showIncomingRoomInvite(invite) {
+      if (AppState.match.active) return; // Don't interrupt active match
+      FriendsState.pendingInvite = invite;
+      const banner = document.getElementById('roomInviteBanner');
+      const avEl = document.getElementById('inviteSenderAvatar');
+      const nameEl = document.getElementById('inviteSenderName');
+      const codeEl = document.getElementById('inviteRoomCodeText');
+      if (!banner) return;
+
+      if (avEl) avEl.textContent = invite.hostAvatar || '😎';
+      if (nameEl) nameEl.textContent = invite.hostName || 'صديقك';
+      if (codeEl) codeEl.textContent = invite.roomCode;
+
+      AudioEngine.healSound();
+      banner.classList.remove('hidden');
+
+      clearTimeout(FriendsState.inviteHideTimer);
+      FriendsState.inviteHideTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+        FriendsState.pendingInvite = null;
+      }, 25000);
+    }
+
+    function acceptRoomInvite() {
+      const invite = FriendsState.pendingInvite;
+      const banner = document.getElementById('roomInviteBanner');
+      if (banner) banner.classList.add('hidden');
+      clearTimeout(FriendsState.inviteHideTimer);
+      FriendsState.pendingInvite = null;
+      if (!invite || !invite.roomCode) return;
+
+      // Leave previous room cleanly if currently in another lobby
+      if (OnlineSession.roomId && OnlineSession.roomId !== invite.roomCode && socket && OnlineSession.connected) {
+        socket.emit('leave_room', { roomId: OnlineSession.roomId });
+      }
+
+      AppState.currentMode = 'private';
+      AppState.isDoubleOrNothingRun = false;
+      OnlineSession.isHost = false;
+      OnlineSession.roomId = invite.roomCode;
+      AppState.roomCode = invite.roomCode;
+
+      if (OnlineSession.joinTimeoutTimer) clearTimeout(OnlineSession.joinTimeoutTimer);
+      OnlineSession.joinTimeoutTimer = setTimeout(() => {
+        OnlineSession.joinTimeoutTimer = null;
+        handleJoinFailure('انتهت مهلة الانضمام للغرفة أو أن الغرفة أُغلقت.');
+      }, 15000);
+
+      emitJoinRoomToServer(invite.roomCode);
+    }
+
+    function declineRoomInvite() {
+      const invite = FriendsState.pendingInvite;
+      const banner = document.getElementById('roomInviteBanner');
+      if (banner) banner.classList.add('hidden');
+      clearTimeout(FriendsState.inviteHideTimer);
+      FriendsState.pendingInvite = null;
+
+      AudioEngine.blankClick();
+      if (invite && invite.fromUid && socket && OnlineSession.connected) {
+        socket.emit('decline_room_invite', {
+          fromUid: invite.fromUid,
+          guestName: AppState.profileName || 'صديقك'
+        });
+      }
     }
 
     function signInWithGoogle() {
