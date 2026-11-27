@@ -191,6 +191,41 @@
     .anim-emote-skull { display: inline-block; animation: emoteSkullShake 0.45s ease-in-out infinite; }
     .anim-emote-target { display: inline-block; animation: emoteTargetPulse 0.65s ease-in-out infinite; }
     .anim-emote-fire { display: inline-block; animation: emoteFireDance 0.55s ease-in-out infinite; }
+
+    @keyframes lightningFlicker {
+      0%, 100% { opacity: 0.95; filter: drop-shadow(0 0 6px #38bdf8) drop-shadow(0 0 12px #0ea5e9); }
+      20% { opacity: 0.35; }
+      35% { opacity: 1; filter: drop-shadow(0 0 10px #bae6fd) drop-shadow(0 0 18px #38bdf8); }
+      55% { opacity: 0.5; }
+      75% { opacity: 1; }
+    }
+    @keyframes shockShake {
+      0%, 100% { transform: translate(0, 0); }
+      15% { transform: translate(-4px, 2px); }
+      30% { transform: translate(4px, -2px); }
+      45% { transform: translate(-3px, -2px); }
+      60% { transform: translate(3px, 2px); }
+      75% { transform: translate(-2px, 1px); }
+    }
+    @keyframes shockFlashOverlay {
+      0% { opacity: 0; }
+      15% { opacity: 0.95; }
+      35% { opacity: 0.25; }
+      55% { opacity: 0.85; }
+      100% { opacity: 0; }
+    }
+    .weapon-lightning-arc {
+      animation: lightningFlicker 0.65s linear infinite;
+    }
+    .shock-overlay-active {
+      animation: shockFlashOverlay 1.05s ease-out forwards;
+    }
+    .card-shocked {
+      animation: shockShake 0.35s linear 3;
+      border-color: #38bdf8 !important;
+      background-color: rgba(12, 74, 110, 0.7) !important;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.85), inset 0 0 12px rgba(186, 230, 253, 0.5) !important;
+    }
   </style>
 </head>
 <body>
@@ -224,6 +259,16 @@
     <!-- Player Hit Blood Vignette Overlay -->
     <div id="selfBloodVignette" class="hidden pointer-events-none absolute inset-0 z-30"
       style="background: radial-gradient(circle at center, transparent 42%, rgba(153, 27, 27, 0.45) 78%, rgba(127, 29, 29, 0.85) 100%);">
+    </div>
+
+    <!-- Player Hit Lightning Shock Overlay -->
+    <div id="selfLightningOverlay" class="hidden pointer-events-none absolute inset-0 z-30"
+      style="background: radial-gradient(circle at center, rgba(186, 230, 253, 0.18) 20%, rgba(56, 189, 248, 0.45) 68%, rgba(2, 132, 199, 0.9) 100%);">
+      <svg viewBox="0 0 400 800" class="w-full h-full opacity-90">
+        <polyline points="200,0 165,140 225,210 150,370 230,450 175,640 215,800" fill="none" stroke="#e0f2fe" stroke-width="5" stroke-linejoin="round" filter="drop-shadow(0 0 10px #38bdf8)"/>
+        <polyline points="60,80 120,190 95,270 165,360" fill="none" stroke="#7dd3fc" stroke-width="3" stroke-linejoin="round"/>
+        <polyline points="340,120 275,230 305,310 230,420" fill="none" stroke="#7dd3fc" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
     </div>
 
     <!-- Top Status Bar -->
@@ -1028,7 +1073,23 @@
 
         <div id="armoryContentContainer" class="flex-1 space-y-2 overflow-y-auto pr-0.5"></div>
 
-        <button type="button" onclick="toggleModal('armoryModal', false)" class="mt-2.5 w-full py-2.5 rounded-xl bg-zinc-800 text-white font-bold text-xs cursor-pointer">
+        <!-- Secret Effect Code Input -->
+        <div class="mt-2.5 pt-2.5 border-t border-zinc-800/90 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-zinc-400">🔐 كود التأثير السري:</span>
+            <span id="secretEffectStatusPill" class="hidden px-2 py-0.5 rounded-full bg-sky-500/20 border border-sky-400/50 text-sky-300 text-[9px] font-black">⚡ تأثير البرق مفعّل</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input id="secretEffectCodeInput" type="text" maxlength="20" placeholder="أدخل الكود السري..." onkeydown="if(event.key==='Enter') applySecretEffectCode()"
+              class="flex-1 px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-mono text-sky-300 focus:outline-none focus:border-sky-400" />
+            <button type="button" onclick="applySecretEffectCode()" class="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-[11px] cursor-pointer transition shrink-0">
+              تفعيل
+            </button>
+          </div>
+          <div id="secretEffectFeedback" class="text-[10px] font-bold h-3.5"></div>
+        </div>
+
+        <button type="button" onclick="toggleModal('armoryModal', false)" class="mt-2 w-full py-2.5 rounded-xl bg-zinc-800 text-white font-bold text-xs cursor-pointer">
           حفظ وإغلاق
         </button>
       </div>
@@ -1170,6 +1231,45 @@
       </div>
     </div>
 
+    <!-- 13. IN-MATCH PLAYER PROFILE INSPECT MODAL (LONG PRESS 1s) -->
+    <div id="playerProfileInspectModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-5">
+      <div class="w-full max-w-xs rounded-3xl bg-zinc-900 border border-emerald-500/45 p-5 text-center shadow-2xl space-y-3">
+        <div id="inspectPlayerAvatar" class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-4xl">
+          😎
+        </div>
+        <div>
+          <h3 id="inspectPlayerName" class="text-base font-black text-white">اسم اللاعب</h3>
+          <p id="inspectPlayerBio" class="text-[11px] text-zinc-400 mt-0.5">جاهز للتحدي 🔥</p>
+        </div>
+
+        <div class="p-3 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-1.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-zinc-400">السلاح والمظهر:</span>
+            <span id="inspectPlayerLoadout" class="font-bold text-purple-300">شوتكن • كلاسيكي</span>
+          </div>
+          <div id="inspectPlayerIdRow" class="flex justify-between">
+            <span class="text-zinc-400">المعرّف (ID):</span>
+            <span id="inspectPlayerIdVal" class="font-mono font-black text-emerald-400">------</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">الانتصارات / المباريات:</span>
+            <span id="inspectPlayerStats" class="font-bold text-amber-300">0 / 0</span>
+          </div>
+        </div>
+
+        <div id="inspectFriendFeedback" class="text-[10px] font-bold h-3.5"></div>
+
+        <div class="space-y-2">
+          <button type="button" id="inspectAddFriendBtn" onclick="sendFriendRequestFromInspect()" class="btn-3d w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">
+            إرسال طلب صداقة ➕
+          </button>
+          <button type="button" onclick="toggleModal('playerProfileInspectModal', false)" class="w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ==================== COMPLETE GAME ENGINE + ONLINE SERVER INTEGRATION ==================== -->
@@ -1218,8 +1318,14 @@
         avatar: AppState.profileAvatar || '😎',
         turnDuration: AppState.turnDuration,
         maxPlayers: AppState.maxRoomPlayers,
+        uid: AppState.googleUser ? AppState.googleUser.uid : null,
+        friendId: FriendsState.friendId || '',
+        bio: AppState.profileBio || '',
+        wins: AppState.wins || 0,
+        matches: AppState.matches || 0,
         weaponId: AppState.equippedWeapon,
-        skinId: AppState.equippedSkin
+        skinId: AppState.equippedSkin,
+        effectId: AppState.equippedEffect || null
       };
       socket.emit('create_room', payload, (ack) => {
         if (ack && (ack.roomId || ack.code || ack.id || ack.players || ack.seats || ack.ok || ack.success)) {
@@ -1239,8 +1345,14 @@
         name: AppState.profileName || 'لاعب',
         playerName: AppState.profileName || 'لاعب',
         avatar: AppState.profileAvatar || '🧑🏻',
+        uid: AppState.googleUser ? AppState.googleUser.uid : null,
+        friendId: FriendsState.friendId || '',
+        bio: AppState.profileBio || '',
+        wins: AppState.wins || 0,
+        matches: AppState.matches || 0,
         weaponId: AppState.equippedWeapon,
-        skinId: AppState.equippedSkin
+        skinId: AppState.equippedSkin,
+        effectId: AppState.equippedEffect || null
       };
       socket.emit('join_room', payload, (ack) => {
         if (!ack) return;
@@ -1732,8 +1844,14 @@
           avatar: isMe ? (AppState.profileAvatar || '😎') : (p.avatar || (p.isBot ? '🤖' : '🧑🏻')),
           isBot: Boolean(p.isBot),
           isSelf: isMe,
+          uid: isMe ? (AppState.googleUser ? AppState.googleUser.uid : null) : (p.uid || null),
+          friendId: isMe ? (FriendsState.friendId || '') : (p.friendId || ''),
+          bio: isMe ? (AppState.profileBio || '') : (p.bio || ''),
+          wins: isMe ? (AppState.wins || 0) : (p.wins || 0),
+          matches: isMe ? (AppState.matches || 0) : (p.matches || 0),
           weaponId: isMe ? AppState.equippedWeapon : (p.weaponId || 'shotgun'),
           skinId: isMe ? AppState.equippedSkin : (p.skinId || 'classic'),
+          effectId: isMe ? (AppState.equippedEffect || null) : (p.effectId || null),
           voiceActive: Boolean(p.voiceActive),
           voiceMuted: Boolean(p.voiceMuted),
           hp: typeof p.hp === 'number' ? p.hp : 5,
@@ -1846,8 +1964,12 @@
             frame.classList.add('shake-screen');
           }
           if (target && !ev.blockedByPillow) {
-            triggerBloodEffect(target, ev.damage || 1);
-            showFloatingHpChange(`-${ev.damage || 1} ❤️`, true, target.isSelf ? 'bottom' : 'top');
+            if (ev.shooterEffect === 'lightning') {
+              triggerLightningShockEffect(target);
+            } else {
+              triggerBloodEffect(target, ev.damage || 1);
+            }
+            showFloatingHpChange(ev.shooterEffect === 'lightning' ? `⚡ -${ev.damage || 1} ❤️` : `-${ev.damage || 1} ❤️`, true, target.isSelf ? 'bottom' : 'top');
           }
         } else {
           AudioEngine.blankClick();
@@ -2016,6 +2138,12 @@
         bloodHit: () => {
           playNoise(0.28, 650, 0.35);
           playTone(150, 'sine', 0.25, 0.3, 55);
+        },
+        lightningZap: () => {
+          vibrate([45, 25, 70, 25, 110]);
+          playNoise(0.32, 3200, 0.48);
+          playTone(1400, 'sawtooth', 0.14, 0.26, 260);
+          setTimeout(() => playTone(1850, 'square', 0.12, 0.2, 340), 75);
         },
         blankClick: () => {
           vibrate(25);
@@ -2266,7 +2394,7 @@
      * 4. DYNAMIC WEAPON + SKIN SVG RENDERER (5 WEAPONS x 6 SKINS)
      */
     let weaponSvgUid = 0;
-    function renderWeaponSVG(weaponId, skinId, isSawed = false, sizeClass = 'w-full h-full') {
+    function renderWeaponSVG(weaponId, skinId, isSawed = false, sizeClass = 'w-full h-full', effectId = null) {
       weaponSvgUid++;
       const uid = weaponSvgUid;
       const skin = WEAPON_SKINS.find(s => s.id === skinId) || WEAPON_SKINS[0];
@@ -2394,11 +2522,22 @@
         `;
       }
 
+      const lightningOverlay = effectId === 'lightning' ? `
+        <g class="weapon-lightning-arc">
+          <polyline points="28,46 64,26 88,42 128,18 164,38 206,20 248,38 292,22" fill="none" stroke="#e0f2fe" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+          <polyline points="42,68 84,54 114,72 158,52 198,68 242,48 286,58" fill="none" stroke="#38bdf8" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>
+          <polyline points="145,28 162,48 152,62" fill="none" stroke="#7dd3fc" stroke-width="1.8" stroke-linejoin="round"/>
+          <polyline points="225,28 240,46 230,60" fill="none" stroke="#bae6fd" stroke-width="1.8" stroke-linejoin="round"/>
+        </g>
+      ` : '';
+      const extraGlow = effectId === 'lightning' ? 'drop-shadow-[0_0_16px_rgba(56,189,248,0.85)]' : skin.glow;
+
       return `
-        <svg viewBox="0 0 320 100" class="${sizeClass} ${skin.glow}">
+        <svg viewBox="0 0 320 100" class="${sizeClass} ${extraGlow}">
           ${defsHtml}
           ${bodyHtml}
           ${civOrnaments}
+          ${lightningOverlay}
         </svg>
       `;
     }
@@ -2422,6 +2561,8 @@
       equippedWeapon: 'shotgun',
       unlockedSkins: ['classic'],
       equippedSkin: 'classic',
+      unlockedSecretEffects: [],
+      equippedEffect: null,
       armoryActiveTab: 'weapons',
       lastVictoryReward: 2,
       isDoubleOrNothingRun: false,
@@ -2453,6 +2594,7 @@
         bannerHoldUntil: 0,
         bannerQueueTimer: null,
         bleedingTargets: {},
+        shockedTargets: {},
         activeEmotes: {}
       }
     };
@@ -2481,6 +2623,12 @@
         if (typeof data.equippedSkin === 'string') {
           AppState.equippedSkin = data.equippedSkin;
         }
+        if (Array.isArray(data.unlockedSecretEffects)) {
+          AppState.unlockedSecretEffects = data.unlockedSecretEffects;
+        }
+        if (typeof data.equippedEffect === 'string' || data.equippedEffect === null) {
+          AppState.equippedEffect = data.equippedEffect;
+        }
       } catch (e) {}
     }
 
@@ -2496,7 +2644,9 @@
         unlockedWeapons: AppState.unlockedWeapons,
         equippedWeapon: AppState.equippedWeapon,
         unlockedSkins: AppState.unlockedSkins,
-        equippedSkin: AppState.equippedSkin
+        equippedSkin: AppState.equippedSkin,
+        unlockedSecretEffects: AppState.unlockedSecretEffects,
+        equippedEffect: AppState.equippedEffect
       };
     }
 
@@ -2530,11 +2680,12 @@
 
       const wId = activePlayer ? activePlayer.weaponId : AppState.equippedWeapon;
       const sId = activePlayer ? activePlayer.skinId : AppState.equippedSkin;
+      const eId = activePlayer ? (activePlayer.isSelf ? AppState.equippedEffect : activePlayer.effectId) : AppState.equippedEffect;
       const wMeta = getWeaponMeta(wId);
       const sMeta = getSkinMeta(sId);
 
       if (mount) {
-        mount.innerHTML = renderWeaponSVG(wId, sId, m.doubleDamage, 'w-full h-full');
+        mount.innerHTML = renderWeaponSVG(wId, sId, m.doubleDamage, 'w-full h-full', eId);
       }
 
       if (ownerBadge && activePlayer) {
@@ -2590,6 +2741,32 @@
           delete m.bleedingTargets[targetPlayer.id];
           renderGameUI();
         }, 1250);
+      }
+    }
+
+    function triggerLightningShockEffect(targetPlayer) {
+      const m = AppState.match;
+      if (!m.shockedTargets) m.shockedTargets = {};
+      m.shockedTargets[targetPlayer.id] = {
+        expiresAt: Date.now() + 1200
+      };
+
+      AudioEngine.lightningZap();
+
+      if (targetPlayer.isSelf) {
+        const overlay = document.getElementById('selfLightningOverlay');
+        if (overlay) {
+          overlay.classList.remove('hidden', 'shock-overlay-active');
+          void overlay.offsetWidth;
+          overlay.classList.add('shock-overlay-active');
+          setTimeout(() => overlay.classList.add('hidden'), 1100);
+        }
+      } else {
+        renderGameUI();
+        setTimeout(() => {
+          if (m.shockedTargets) delete m.shockedTargets[targetPlayer.id];
+          renderGameUI();
+        }, 1200);
       }
     }
 
@@ -2768,7 +2945,15 @@
         previewLabel.textContent = `${curW.name} • ${curS.name}`;
       }
       if (previewStage) {
-        previewStage.innerHTML = renderWeaponSVG(AppState.equippedWeapon, AppState.equippedSkin, false, 'w-full h-full');
+        previewStage.innerHTML = renderWeaponSVG(AppState.equippedWeapon, AppState.equippedSkin, false, 'w-full h-full', AppState.equippedEffect);
+      }
+      const secretPill = document.getElementById('secretEffectStatusPill');
+      if (secretPill) {
+        if (AppState.equippedEffect === 'lightning') {
+          secretPill.classList.remove('hidden');
+        } else {
+          secretPill.classList.add('hidden');
+        }
       }
 
       if (!container) return;
@@ -2906,6 +3091,37 @@
       updateTableActiveWeaponVisual();
       AudioEngine.itemUse();
       renderArmoryContent();
+    }
+
+    function applySecretEffectCode() {
+      const inp = document.getElementById('secretEffectCodeInput');
+      const fb = document.getElementById('secretEffectFeedback');
+      if (!inp || !fb) return;
+
+      const code = inp.value.trim().toLowerCase();
+      if (code === 'fefo') {
+        if (!AppState.unlockedSecretEffects.includes('lightning')) {
+          AppState.unlockedSecretEffects.push('lightning');
+        }
+        AppState.equippedEffect = (AppState.equippedEffect === 'lightning') ? null : 'lightning';
+        inp.value = '';
+        saveProfile(true);
+        updateTableActiveWeaponVisual();
+        renderArmoryContent();
+        if (AppState.equippedEffect === 'lightning') {
+          AudioEngine.lightningZap();
+          fb.className = 'text-[10px] font-bold text-sky-300 h-3.5';
+          fb.textContent = '⚡ تم تفعيل تأثير البرق السري على جميع أسلحتك!';
+        } else {
+          AudioEngine.blankClick();
+          fb.className = 'text-[10px] font-bold text-zinc-400 h-3.5';
+          fb.textContent = 'تم إيقاف تأثير البرق مؤقتاً (أعد إدخال الكود لتفعيله).';
+        }
+      } else {
+        AudioEngine.blankClick();
+        fb.className = 'text-[10px] font-bold text-red-400 h-3.5';
+        fb.textContent = '❌ كود غير صحيح!';
+      }
     }
 
     function toggleMute() {
@@ -3541,6 +3757,7 @@
           isSelf: p.isSelf,
           weaponId: p.isSelf ? AppState.equippedWeapon : (p.weaponId || fallbackLoadout.weaponId),
           skinId: p.isSelf ? AppState.equippedSkin : (p.skinId || fallbackLoadout.skinId),
+          effectId: p.isSelf ? (AppState.equippedEffect || null) : (p.effectId || null),
           hp: 5,
           maxHp: 5,
           eliminated: false,
@@ -3884,15 +4101,46 @@
         const isTarget = (m.selectedTargetId === opp.id && !isDead);
         const bleedInfo = m.bleedingTargets[opp.id];
         const isBleeding = Boolean(bleedInfo && bleedInfo.expiresAt > Date.now());
+        const shockInfo = m.shockedTargets && m.shockedTargets[opp.id];
+        const isShocked = Boolean(shockInfo && shockInfo.expiresAt > Date.now());
         const oppWeaponMeta = getWeaponMeta(opp.weaponId);
         const oppSkinMeta = getSkinMeta(opp.skinId);
 
         const card = document.createElement('div');
-        card.onclick = () => { if (!isDead) selectOpponentTarget(opp.id); };
+        let oppPressTimer = null;
+        let oppLongPressed = false;
+        const startOppPress = (e) => {
+          if (e.target && e.target.closest('button')) return;
+          oppLongPressed = false;
+          oppPressTimer = setTimeout(() => {
+            oppLongPressed = true;
+            openInspectPlayerModal(opp);
+          }, 1000);
+        };
+        const cancelOppPress = () => {
+          if (oppPressTimer) {
+            clearTimeout(oppPressTimer);
+            oppPressTimer = null;
+          }
+        };
+        card.addEventListener('pointerdown', startOppPress);
+        card.addEventListener('pointerup', cancelOppPress);
+        card.addEventListener('pointerleave', cancelOppPress);
+        card.addEventListener('pointercancel', cancelOppPress);
+        card.addEventListener('contextmenu', e => e.preventDefault());
+        card.onclick = () => {
+          if (oppLongPressed) {
+            oppLongPressed = false;
+            return;
+          }
+          if (!isDead) selectOpponentTarget(opp.id);
+        };
 
         let borderClass = 'border-zinc-800 bg-zinc-950/70';
         if (isDead) {
           borderClass = 'border-zinc-900 bg-zinc-950/40 opacity-45 grayscale';
+        } else if (isShocked) {
+          borderClass = 'card-shocked border-sky-400 bg-sky-950/70';
         } else if (isBleeding) {
           borderClass = 'border-red-500 bg-red-950/60 shadow-[0_0_16px_rgba(220,38,38,0.65)]';
         } else if (isTurn) {
@@ -3938,9 +4186,19 @@
           ? `<div class="emote-bubble pointer-events-none absolute -top-2 left-1/2 z-40 px-2.5 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/80 text-base shadow-2xl">${renderAnimatedEmoteHtml(oppEmoteId)}</div>`
           : '';
 
+        const shockBoltsHtml = isShocked ? `
+          <div class="pointer-events-none absolute inset-0 z-20 overflow-hidden flex items-center justify-center">
+            <svg viewBox="0 0 120 70" class="w-full h-full weapon-lightning-arc">
+              <polyline points="10,12 42,28 32,42 74,20 65,48 110,58" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linejoin="round"/>
+              <polyline points="95,8 65,30 82,45 40,62" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        ` : '';
+
         card.innerHTML = `
           ${oppEmoteHtml}
           ${bloodDripsHtml}
+          ${shockBoltsHtml}
           <div class="flex items-center justify-between gap-1 relative z-10">
             <div class="flex items-center gap-1 min-w-0">
               <span class="text-xs leading-none">${isDead ? '💀' : opp.avatar}</span>
@@ -4529,10 +4787,18 @@
               target.hp = 0;
               target.eliminated = true;
             }
-            triggerBloodEffect(target, damage);
-            showFloatingHpChange(`-${damage} ❤️`, true, target.isSelf ? 'bottom' : 'top');
-            const elimText = target.hp === 0 ? ` (تم إقصاء ${target.name} 💀)` : '';
-            setActionBanner(`💥 طلق حي! دماء تسيل من ${targetNameText} (-${damage} ❤️)${elimText}`, 'danger', true);
+            const isShock = shooter.effectId === 'lightning';
+            if (isShock) {
+              triggerLightningShockEffect(target);
+              showFloatingHpChange(`⚡ -${damage} ❤️`, true, target.isSelf ? 'bottom' : 'top');
+              const elimText = target.hp === 0 ? ` (تم إقصاء ${target.name} 💀)` : '';
+              setActionBanner(`⚡ صعقة برق! ${shooter.name} صعق ${targetNameText} (-${damage} ❤️)${elimText}`, 'safe', true);
+            } else {
+              triggerBloodEffect(target, damage);
+              showFloatingHpChange(`-${damage} ❤️`, true, target.isSelf ? 'bottom' : 'top');
+              const elimText = target.hp === 0 ? ` (تم إقصاء ${target.name} 💀)` : '';
+              setActionBanner(`💥 طلق حي! دماء تسيل من ${targetNameText} (-${damage} ❤️)${elimText}`, 'danger', true);
+            }
           }
         } else {
           AudioEngine.blankClick();
@@ -4862,6 +5128,25 @@
         confirmStartBotMatch();
       } else if (AppState.currentMode === 'quick') {
         startQuickMatch();
+      } else if (OnlineSession.roomId && socket && OnlineSession.connected) {
+        OnlineSession.isOnlineMatch = false;
+        AppState.match.active = false;
+        stopTurnTimer();
+        socket.emit('return_to_lobby', {
+          roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
+          weaponId: AppState.equippedWeapon,
+          skinId: AppState.equippedSkin,
+          effectId: AppState.equippedEffect || null
+        }, (ack) => {
+          if (ack && ack.ok) {
+            showScreen('screen-lobby');
+          } else {
+            backToMenuFromEnd();
+          }
+        });
+        showScreen('screen-lobby');
       } else {
         backToMenuFromEnd();
       }
@@ -5778,6 +6063,12 @@
             if (typeof data.equippedSkin === 'string' && AppState.unlockedSkins.includes(data.equippedSkin)) {
               AppState.equippedSkin = data.equippedSkin;
             }
+            if (Array.isArray(data.unlockedSecretEffects)) {
+              AppState.unlockedSecretEffects = Array.from(new Set([...AppState.unlockedSecretEffects, ...data.unlockedSecretEffects]));
+            }
+            if (typeof data.equippedEffect === 'string' && AppState.unlockedSecretEffects.includes(data.equippedEffect)) {
+              AppState.equippedEffect = data.equippedEffect;
+            }
             FriendsState.friendId = assignedFriendId;
             FriendsState.friendUids = Array.isArray(data.friends) ? data.friends : [];
             saveProfile(false);
@@ -6390,6 +6681,112 @@
 
     function signOutGoogle() {
       FirebaseService.signOut();
+    }
+
+    // ==================== IN-MATCH OPPONENT PROFILE INSPECT ====================
+    let inspectedPlayerObj = null;
+
+    function openInspectPlayerModal(opp) {
+      if (!opp) return;
+      inspectedPlayerObj = opp;
+      AudioEngine.itemUse();
+
+      const avEl = document.getElementById('inspectPlayerAvatar');
+      const nameEl = document.getElementById('inspectPlayerName');
+      const bioEl = document.getElementById('inspectPlayerBio');
+      const loadoutEl = document.getElementById('inspectPlayerLoadout');
+      const idRow = document.getElementById('inspectPlayerIdRow');
+      const idVal = document.getElementById('inspectPlayerIdVal');
+      const statsEl = document.getElementById('inspectPlayerStats');
+      const addBtn = document.getElementById('inspectAddFriendBtn');
+      const fb = document.getElementById('inspectFriendFeedback');
+
+      if (avEl) avEl.textContent = opp.avatar || '😎';
+      if (nameEl) nameEl.textContent = opp.name || 'لاعب';
+      if (bioEl) bioEl.textContent = opp.isBot ? 'خصم ذكاء اصطناعي 🤖' : (opp.bio || 'جاهز للتحدي 🔥');
+
+      const wMeta = getWeaponMeta(opp.weaponId);
+      const sMeta = getSkinMeta(opp.skinId);
+      if (loadoutEl) {
+        loadoutEl.textContent = `${wMeta.name} • ${sMeta.name.split(' ')[0]}${opp.effectId === 'lightning' ? ' ⚡' : ''}`;
+      }
+      if (statsEl) {
+        statsEl.textContent = opp.isBot ? 'بوت' : `${opp.wins || 0} / ${opp.matches || 0}`;
+      }
+      if (fb) fb.textContent = '';
+
+      if (opp.isBot) {
+        if (idRow) idRow.classList.add('hidden');
+        if (addBtn) {
+          addBtn.disabled = true;
+          addBtn.textContent = 'لاعب بوت (لا يمكن إضافته)';
+          addBtn.className = 'w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed';
+        }
+      } else if (!opp.friendId && !opp.uid) {
+        if (idRow) idRow.classList.add('hidden');
+        if (addBtn) {
+          addBtn.disabled = true;
+          addBtn.textContent = 'حساب ضيف (غير مرتبط بـ Google)';
+          addBtn.className = 'w-full py-2.5 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-xs cursor-not-allowed';
+        }
+      } else {
+        if (idRow) idRow.classList.remove('hidden');
+        if (idVal) idVal.textContent = opp.friendId || '------';
+        const alreadyFriend = opp.uid && FriendsState.friendUids.includes(opp.uid);
+        if (alreadyFriend) {
+          if (addBtn) {
+            addBtn.disabled = true;
+            addBtn.textContent = 'صديقك بالفعل ✓';
+            addBtn.className = 'w-full py-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-black text-xs cursor-default';
+          }
+        } else if (!AppState.googleUser) {
+          if (addBtn) {
+            addBtn.disabled = true;
+            addBtn.textContent = 'اربط حسابك بـ Google لإرسال طلب صداقة';
+            addBtn.className = 'w-full py-2.5 rounded-xl bg-zinc-800 text-amber-300 font-bold text-xs cursor-not-allowed';
+          }
+        } else {
+          if (addBtn) {
+            addBtn.disabled = false;
+            addBtn.textContent = 'إرسال طلب صداقة ➕';
+            addBtn.className = 'btn-3d w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs';
+          }
+        }
+      }
+
+      toggleModal('playerProfileInspectModal', true);
+    }
+
+    async function sendFriendRequestFromInspect() {
+      if (!inspectedPlayerObj || !inspectedPlayerObj.friendId) return;
+      const addBtn = document.getElementById('inspectAddFriendBtn');
+      const fb = document.getElementById('inspectFriendFeedback');
+      if (addBtn) {
+        addBtn.disabled = true;
+        addBtn.textContent = 'جاري الإرسال...';
+      }
+      const res = await FirebaseService.sendFriendRequest(inspectedPlayerObj.friendId);
+      if (res.ok) {
+        AudioEngine.healSound();
+        if (addBtn) {
+          addBtn.textContent = 'تم إرسال الطلب ✓';
+          addBtn.className = 'w-full py-2.5 rounded-xl bg-zinc-800 text-emerald-300 font-black text-xs';
+        }
+        if (fb) {
+          fb.className = 'text-[10px] font-bold text-emerald-400 h-3.5';
+          fb.textContent = res.msg;
+        }
+      } else {
+        AudioEngine.blankClick();
+        if (addBtn) {
+          addBtn.disabled = false;
+          addBtn.textContent = 'إرسال طلب صداقة ➕';
+        }
+        if (fb) {
+          fb.className = 'text-[10px] font-bold text-red-400 h-3.5';
+          fb.textContent = res.msg;
+        }
+      }
     }
 
     // Initialize safely on load
