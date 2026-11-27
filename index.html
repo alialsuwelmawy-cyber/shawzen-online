@@ -6,6 +6,9 @@
   <title>Shawzen Online | لعبة الشوتكن والتحدي</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -234,6 +237,31 @@
 
     <!-- ==================== SCREEN 1: MAIN MENU ==================== -->
     <main id="screen-menu" class="flex-1 flex flex-col justify-between p-4 overflow-y-auto">
+      <!-- Player Profile & Google Auth Bar -->
+      <div class="mb-2.5 p-2.5 rounded-2xl bg-zinc-900/95 border border-zinc-800 flex items-center justify-between gap-2 shadow-lg">
+        <div onclick="openProfileModal()" class="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1">
+          <div id="menuProfileAvatar" class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0">
+            😎
+          </div>
+          <div class="min-w-0 text-right">
+            <div class="flex items-center gap-1.5">
+              <span id="menuProfileName" class="text-xs font-black text-white truncate">لاعب</span>
+              <span id="menuGoogleBadge" class="px-1.5 py-0.2 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[8px] font-bold shrink-0">ضيف</span>
+            </div>
+            <div id="menuProfileBio" class="text-[10px] text-zinc-400 truncate mt-0.5">جاهز للتحدي 🔥</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" id="menuGoogleSignInBtn" onclick="signInWithGoogle()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[10px] flex items-center gap-1 transition cursor-pointer shadow">
+            <span>G</span>
+            <span>ربط Google</span>
+          </button>
+          <button type="button" onclick="openProfileModal()" class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-amber-300 font-bold text-[10px] transition cursor-pointer" title="تعديل البروفايل">
+            ✏️ بروفايل
+          </button>
+        </div>
+      </div>
+
       <!-- Hero Banner -->
       <div class="relative rounded-3xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-900 via-zinc-950 to-black p-4 text-center shadow-xl">
         <div class="absolute -top-12 -right-12 w-36 h-36 bg-red-600/15 rounded-full blur-2xl pointer-events-none"></div>
@@ -584,12 +612,12 @@
             </div>
             <div id="selfEmoteBubble" class="hidden pointer-events-none absolute -top-7 right-4 left-auto z-40 px-2 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/60 text-lg shadow-xl"></div>
             <div id="playerAvatarBtn" title="اضغط مطولاً نصف ثانية لإرسال سمايل تفاعلي" class="relative w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-base cursor-pointer active:scale-95 transition">
-              😎
+              <span id="gameSelfAvatarIcon">😎</span>
               <span id="playerCuffedBadge" class="hidden absolute -top-1 -right-1 bg-amber-500 text-zinc-950 text-[9px] font-black px-1 rounded">⛓️</span>
             </div>
             <div>
               <div class="flex items-center gap-1 flex-wrap">
-                <span class="text-xs font-extrabold text-white">أنت</span>
+                <span id="gameSelfNameText" class="text-xs font-extrabold text-white">أنت</span>
                 <span id="playerHpNumeric" class="text-[10px] font-mono font-bold text-zinc-400">(5/5)</span>
                 <span id="playerShieldBadge" class="hidden px-1.5 py-0.2 rounded bg-sky-500/20 border border-sky-400/50 text-sky-300 text-[9px] font-black">🛡️ درع</span>
                 <span id="playerPillowBadge" class="hidden px-1.5 py-0.2 rounded bg-purple-500/20 border border-purple-400/50 text-purple-300 text-[9px] font-black">🛏️ وسادة سرية (2)</span>
@@ -989,6 +1017,64 @@
       </div>
     </div>
 
+    <!-- 12. PLAYER PROFILE & GOOGLE ACCOUNT MODAL -->
+    <div id="profileModal" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="w-full max-w-sm max-h-[88vh] flex flex-col rounded-3xl bg-zinc-900 border border-emerald-500/40 p-4 text-right shadow-2xl">
+        <div class="flex items-center justify-between pb-2.5 border-b border-zinc-800">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">👤</span>
+            <h3 class="text-sm font-black text-white">الملف الشخصي وحساب Google</h3>
+          </div>
+          <button type="button" onclick="toggleModal('profileModal', false)" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">✕</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-3 space-y-3 pr-0.5">
+          <!-- Google Account Card -->
+          <div class="p-3 rounded-2xl bg-zinc-950 border border-zinc-800">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div id="profileGoogleStatusTitle" class="text-xs font-black text-amber-300">حساب ضيف (محلي فقط)</div>
+                <div id="profileGoogleEmail" class="text-[10px] text-zinc-400 truncate mt-0.5">اربط حسابك بـ Google لحفظ تقدمك وأسلحتك سحابياً</div>
+              </div>
+              <button type="button" id="profileGoogleActionBtn" onclick="signInWithGoogle()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[11px] shrink-0 cursor-pointer transition">
+                ربط بـ Google
+              </button>
+            </div>
+            <div id="profileSyncMsg" class="text-[10px] text-emerald-400 font-bold mt-1.5 hidden"></div>
+          </div>
+
+          <!-- Display Name -->
+          <div>
+            <label class="block text-[11px] font-bold text-zinc-300 mb-1">الاسم المستعار (يظهر في الغرف):</label>
+            <input id="profileNameInput" type="text" maxlength="14" placeholder="اكتب اسمك هنا..."
+              class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+
+          <!-- Bio / Status -->
+          <div>
+            <label class="block text-[11px] font-bold text-zinc-300 mb-1">النبذة الشخصية:</label>
+            <input id="profileBioInput" type="text" maxlength="40" placeholder="مثال: جاهز للتحدي 🔥"
+              class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500" />
+          </div>
+
+          <!-- Avatar Picker -->
+          <div>
+            <label class="block text-[11px] font-bold text-zinc-300 mb-1.5">اختر صورتك الرمزية (Avatar):</label>
+            <div id="profileAvatarGrid" class="grid grid-cols-6 gap-1.5"></div>
+          </div>
+        </div>
+
+        <div class="pt-2.5 border-t border-zinc-800 flex gap-2">
+          <button type="button" onclick="saveProfileEdits()" class="btn-3d flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs">
+            حفظ التعديلات ✓
+          </button>
+          <button type="button" onclick="toggleModal('profileModal', false)" class="px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-bold text-xs cursor-pointer">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ==================== COMPLETE GAME ENGINE + ONLINE SERVER INTEGRATION ==================== -->
@@ -1032,8 +1118,9 @@
         roomCode: roomCode,
         id: roomCode,
         playerToken: OnlineSession.playerToken,
-        name: 'Host',
-        playerName: 'Host',
+        name: AppState.profileName || 'المضيف',
+        playerName: AppState.profileName || 'المضيف',
+        avatar: AppState.profileAvatar || '😎',
         turnDuration: AppState.turnDuration,
         maxPlayers: AppState.maxRoomPlayers,
         weaponId: AppState.equippedWeapon,
@@ -1054,8 +1141,9 @@
         roomCode: roomCode,
         id: roomCode,
         playerToken: OnlineSession.playerToken,
-        name: 'Player',
-        playerName: 'Player',
+        name: AppState.profileName || 'لاعب',
+        playerName: AppState.profileName || 'لاعب',
+        avatar: AppState.profileAvatar || '🧑🏻',
         weaponId: AppState.equippedWeapon,
         skinId: AppState.equippedSkin
       };
@@ -1471,7 +1559,7 @@
           name: isMe
             ? (OnlineSession.isHost ? 'أنت (المضيف)' : 'أنت')
             : (isRoomHost ? `${p.name || 'المضيف'} (المضيف)` : (p.name || `لاعب ${idx + 1}`)),
-          avatar: isMe ? '😎' : (p.isBot ? '🤖' : '🧑🏻'),
+          avatar: isMe ? (AppState.profileAvatar || '😎') : (p.avatar || (p.isBot ? '🤖' : '🧑🏻')),
           isBot: Boolean(p.isBot),
           isSelf: isMe,
           weaponId: isMe ? AppState.equippedWeapon : (p.weaponId || 'shotgun'),
@@ -1506,7 +1594,7 @@
           id: p.id,
           token: p.token || null,
           name: isMe ? 'أنت' : (p.name || `لاعب ${idx + 1}`),
-          avatar: isMe ? '😎' : (p.isBot ? '🤖' : '🧑🏻'),
+          avatar: isMe ? (AppState.profileAvatar || '😎') : (p.avatar || (p.isBot ? '🤖' : '🧑🏻')),
           isBot: Boolean(p.isBot),
           isSelf: isMe,
           weaponId: isMe ? AppState.equippedWeapon : (p.weaponId || 'shotgun'),
@@ -2186,6 +2274,11 @@
     const STORAGE_KEY = 'shawzen_online_profile_v4';
 
     const AppState = {
+      profileName: 'لاعب',
+      profileAvatar: '😎',
+      profileBio: 'جاهز للتحدي 🔥',
+      googleUser: null,
+      selectedModalAvatar: '😎',
       tickets: 5,
       wins: 0,
       matches: 0,
@@ -2234,6 +2327,9 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const data = JSON.parse(raw);
+        if (typeof data.profileName === 'string' && data.profileName.trim()) AppState.profileName = data.profileName.trim().slice(0, 14);
+        if (typeof data.profileAvatar === 'string' && data.profileAvatar.trim()) AppState.profileAvatar = data.profileAvatar.trim();
+        if (typeof data.profileBio === 'string') AppState.profileBio = data.profileBio.trim().slice(0, 40);
         if (typeof data.tickets === 'number') AppState.tickets = data.tickets;
         if (typeof data.wins === 'number') AppState.wins = data.wins;
         if (typeof data.matches === 'number') AppState.matches = data.matches;
@@ -2253,19 +2349,30 @@
       } catch (e) {}
     }
 
-    function saveProfile() {
+    function buildProfileSnapshot() {
+      return {
+        profileName: AppState.profileName,
+        profileAvatar: AppState.profileAvatar,
+        profileBio: AppState.profileBio,
+        tickets: AppState.tickets,
+        wins: AppState.wins,
+        matches: AppState.matches,
+        streak: AppState.streak,
+        unlockedWeapons: AppState.unlockedWeapons,
+        equippedWeapon: AppState.equippedWeapon,
+        unlockedSkins: AppState.unlockedSkins,
+        equippedSkin: AppState.equippedSkin
+      };
+    }
+
+    function saveProfile(syncCloud = true) {
+      const snapshot = buildProfileSnapshot();
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          tickets: AppState.tickets,
-          wins: AppState.wins,
-          matches: AppState.matches,
-          streak: AppState.streak,
-          unlockedWeapons: AppState.unlockedWeapons,
-          equippedWeapon: AppState.equippedWeapon,
-          unlockedSkins: AppState.unlockedSkins,
-          equippedSkin: AppState.equippedSkin
-        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
       } catch (e) {}
+      if (syncCloud && typeof FirebaseService !== 'undefined' && FirebaseService.saveToCloud) {
+        FirebaseService.saveToCloud(snapshot);
+      }
     }
 
     function getWeaponMeta(weaponId) {
@@ -2681,8 +2788,8 @@
       const participants = [
         {
           id: 'player',
-          name: 'أنت',
-          avatar: '😎',
+          name: AppState.profileName || 'أنت',
+          avatar: AppState.profileAvatar || '😎',
           isBot: false,
           isSelf: true,
           weaponId: AppState.equippedWeapon,
@@ -2732,7 +2839,8 @@
       showScreen('screen-lobby');
 
       socket.emit('quick_match', {
-        name: 'Player',
+        name: AppState.profileName || 'لاعب',
+        avatar: AppState.profileAvatar || '😎',
         weaponId: AppState.equippedWeapon,
         skinId: AppState.equippedSkin
       });
@@ -2879,8 +2987,8 @@
       AppState.lobbySeats = [
         {
           id: (socket && socket.id) ? socket.id : 'player',
-          name: 'أنت (المضيف)',
-          avatar: '😎',
+          name: `${AppState.profileName || 'أنت'} (المضيف)`,
+          avatar: AppState.profileAvatar || '😎',
           isBot: false,
           isSelf: true,
           weaponId: AppState.equippedWeapon,
@@ -4539,8 +4647,8 @@
       const participants = [
         {
           id: 'player',
-          name: 'أنت',
-          avatar: '😎',
+          name: AppState.profileName || 'أنت',
+          avatar: AppState.profileAvatar || '😎',
           isBot: false,
           isSelf: true,
           weaponId: AppState.equippedWeapon,
@@ -5281,12 +5389,262 @@
       VoiceManager.toggleSelfMic();
     }
 
+    // ==================== FIREBASE AUTH & FIRESTORE PROFILE SERVICE ====================
+    const PROFILE_AVATARS = ['😎', '🤠', '🥷', '👑', '🦁', '🐺', '🦊', '👾', '🤖', '🎭', '💀', '🔥'];
+
+    const FirebaseService = (() => {
+      const firebaseConfig = {
+        apiKey: "AIzaSyDCZ_lLl6RxMcXUdQwEZc5cRfF1b4YH8jw",
+        authDomain: "shawzen-online.firebaseapp.com",
+        projectId: "shawzen-online",
+        storageBucket: "shawzen-online.firebasestorage.app",
+        messagingSenderId: "297537280430",
+        appId: "1:297537280430:web:fb4dd3799a1c130f3a103f",
+        measurementId: "G-LYHW9G5C8V"
+      };
+
+      let auth = null;
+      let db = null;
+      let ready = false;
+
+      function init() {
+        try {
+          if (typeof firebase === 'undefined') return;
+          if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+          }
+          auth = firebase.auth();
+          db = firebase.firestore();
+          ready = true;
+
+          auth.onAuthStateChanged(async (user) => {
+            if (user) {
+              AppState.googleUser = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || ''
+              };
+              await loadFromCloud(user);
+            } else {
+              AppState.googleUser = null;
+            }
+            updateProfileUI();
+          });
+        } catch (e) {}
+      }
+
+      async function loadFromCloud(user) {
+        if (!ready || !db || !user) return;
+        try {
+          const docRef = db.collection('users').doc(user.uid);
+          const snap = await docRef.get();
+          if (snap.exists) {
+            const data = snap.data();
+            if (typeof data.profileName === 'string' && data.profileName.trim()) AppState.profileName = data.profileName.trim().slice(0, 14);
+            if (typeof data.profileAvatar === 'string' && data.profileAvatar.trim()) AppState.profileAvatar = data.profileAvatar.trim();
+            if (typeof data.profileBio === 'string') AppState.profileBio = data.profileBio.trim().slice(0, 40);
+            if (typeof data.tickets === 'number') AppState.tickets = Math.max(AppState.tickets, data.tickets);
+            if (typeof data.wins === 'number') AppState.wins = Math.max(AppState.wins, data.wins);
+            if (typeof data.matches === 'number') AppState.matches = Math.max(AppState.matches, data.matches);
+            if (typeof data.streak === 'number') AppState.streak = Math.max(AppState.streak, data.streak);
+            if (Array.isArray(data.unlockedWeapons)) {
+              AppState.unlockedWeapons = Array.from(new Set([...AppState.unlockedWeapons, ...data.unlockedWeapons]));
+            }
+            if (typeof data.equippedWeapon === 'string' && AppState.unlockedWeapons.includes(data.equippedWeapon)) {
+              AppState.equippedWeapon = data.equippedWeapon;
+            }
+            if (Array.isArray(data.unlockedSkins)) {
+              AppState.unlockedSkins = Array.from(new Set([...AppState.unlockedSkins, ...data.unlockedSkins]));
+            }
+            if (typeof data.equippedSkin === 'string' && AppState.unlockedSkins.includes(data.equippedSkin)) {
+              AppState.equippedSkin = data.equippedSkin;
+            }
+            saveProfile(false);
+          } else {
+            if (AppState.profileName === 'لاعب' && user.displayName) {
+              AppState.profileName = user.displayName.trim().slice(0, 14);
+            }
+            await saveToCloud(buildProfileSnapshot());
+          }
+          updateTicketsAndStatsUI();
+          updateTableActiveWeaponVisual();
+          updateProfileUI();
+        } catch (e) {}
+      }
+
+      async function saveToCloud(snapshot) {
+        if (!ready || !db || !AppState.googleUser) return;
+        try {
+          await db.collection('users').doc(AppState.googleUser.uid).set({
+            ...snapshot,
+            email: AppState.googleUser.email,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (e) {}
+      }
+
+      async function signIn() {
+        if (!ready || !auth) {
+          alert('تعذر تهيئة خدمة Google، تأكد من اتصالك بالإنترنت.');
+          return;
+        }
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+          await auth.signInWithPopup(provider);
+          showProfileSyncMsg('✓ تم ربط حسابك بـ Google وحفظ تقدمك سحابياً!');
+        } catch (err) {
+          if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment')) {
+            try { await auth.signInWithRedirect(provider); } catch (e) {}
+          } else if (err && err.code !== 'auth/popup-closed-by-user') {
+            showProfileSyncMsg('تعذر تسجيل الدخول: ' + (err.message || err.code), true);
+          }
+        }
+      }
+
+      async function signOut() {
+        if (!ready || !auth) return;
+        try {
+          await auth.signOut();
+          AppState.googleUser = null;
+          updateProfileUI();
+          showProfileSyncMsg('تم تسجيل الخروج من حساب Google.');
+        } catch (e) {}
+      }
+
+      return { init, saveToCloud, signIn, signOut };
+    })();
+
+    function showProfileSyncMsg(text, isError = false) {
+      const el = document.getElementById('profileSyncMsg');
+      if (!el) return;
+      el.textContent = text;
+      el.className = isError
+        ? 'text-[10px] text-red-400 font-bold mt-1.5'
+        : 'text-[10px] text-emerald-400 font-bold mt-1.5';
+      el.classList.remove('hidden');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function updateProfileUI() {
+      const mAvatar = document.getElementById('menuProfileAvatar');
+      const mName = document.getElementById('menuProfileName');
+      const mBio = document.getElementById('menuProfileBio');
+      const mBadge = document.getElementById('menuGoogleBadge');
+      const mSignInBtn = document.getElementById('menuGoogleSignInBtn');
+
+      if (mAvatar) mAvatar.textContent = AppState.profileAvatar || '😎';
+      if (mName) mName.textContent = AppState.profileName || 'لاعب';
+      if (mBio) mBio.textContent = AppState.profileBio || 'جاهز للتحدي 🔥';
+
+      const gAvatar = document.getElementById('gameSelfAvatarIcon');
+      const gName = document.getElementById('gameSelfNameText');
+      if (gAvatar) gAvatar.textContent = AppState.profileAvatar || '😎';
+      if (gName) gName.textContent = AppState.profileName || 'أنت';
+
+      const statusTitle = document.getElementById('profileGoogleStatusTitle');
+      const statusEmail = document.getElementById('profileGoogleEmail');
+      const actionBtn = document.getElementById('profileGoogleActionBtn');
+
+      if (AppState.googleUser) {
+        if (mBadge) {
+          mBadge.textContent = 'Google ✓';
+          mBadge.className = 'px-1.5 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[8px] font-bold shrink-0';
+        }
+        if (mSignInBtn) mSignInBtn.classList.add('hidden');
+        if (statusTitle) {
+          statusTitle.textContent = 'مرتبط بحساب Google ✓';
+          statusTitle.className = 'text-xs font-black text-emerald-400';
+        }
+        if (statusEmail) statusEmail.textContent = AppState.googleUser.email || 'الحفظ السحابي مفعّل';
+        if (actionBtn) {
+          actionBtn.textContent = 'تسجيل الخروج';
+          actionBtn.onclick = signOutGoogle;
+          actionBtn.className = 'px-3 py-1.5 rounded-xl bg-red-950/70 hover:bg-red-900/80 border border-red-500/50 text-red-300 font-bold text-[11px] shrink-0 cursor-pointer transition';
+        }
+      } else {
+        if (mBadge) {
+          mBadge.textContent = 'ضيف';
+          mBadge.className = 'px-1.5 py-0.2 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-[8px] font-bold shrink-0';
+        }
+        if (mSignInBtn) mSignInBtn.classList.remove('hidden');
+        if (statusTitle) {
+          statusTitle.textContent = 'حساب ضيف (محلي فقط)';
+          statusTitle.className = 'text-xs font-black text-amber-300';
+        }
+        if (statusEmail) statusEmail.textContent = 'اربط حسابك بـ Google لحفظ تقدمك وأسلحتك سحابياً';
+        if (actionBtn) {
+          actionBtn.textContent = 'ربط بـ Google';
+          actionBtn.onclick = signInWithGoogle;
+          actionBtn.className = 'px-3 py-1.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-black text-[11px] shrink-0 cursor-pointer transition';
+        }
+      }
+    }
+
+    function openProfileModal() {
+      AppState.selectedModalAvatar = AppState.profileAvatar || '😎';
+      const nameInp = document.getElementById('profileNameInput');
+      const bioInp = document.getElementById('profileBioInput');
+      if (nameInp) nameInp.value = AppState.profileName || '';
+      if (bioInp) bioInp.value = AppState.profileBio || '';
+      renderProfileAvatarGrid();
+      updateProfileUI();
+      toggleModal('profileModal', true);
+    }
+
+    function renderProfileAvatarGrid() {
+      const grid = document.getElementById('profileAvatarGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      PROFILE_AVATARS.forEach((av) => {
+        const selected = AppState.selectedModalAvatar === av;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = av;
+        btn.className = selected
+          ? 'h-10 rounded-xl bg-emerald-500/25 border-2 border-emerald-400 text-xl flex items-center justify-center cursor-pointer transition scale-105'
+          : 'h-10 rounded-xl bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-xl flex items-center justify-center cursor-pointer transition';
+        btn.onclick = () => {
+          AppState.selectedModalAvatar = av;
+          AudioEngine.blankClick();
+          renderProfileAvatarGrid();
+        };
+        grid.appendChild(btn);
+      });
+    }
+
+    function saveProfileEdits() {
+      const nameInp = document.getElementById('profileNameInput');
+      const bioInp = document.getElementById('profileBioInput');
+      const newName = nameInp ? nameInp.value.trim().slice(0, 14) : '';
+      const newBio = bioInp ? bioInp.value.trim().slice(0, 40) : '';
+
+      AppState.profileName = newName || 'لاعب';
+      AppState.profileBio = newBio || 'جاهز للتحدي 🔥';
+      AppState.profileAvatar = AppState.selectedModalAvatar || '😎';
+
+      saveProfile(true);
+      updateProfileUI();
+      AudioEngine.healSound();
+      toggleModal('profileModal', false);
+    }
+
+    function signInWithGoogle() {
+      FirebaseService.signIn();
+    }
+
+    function signOutGoogle() {
+      FirebaseService.signOut();
+    }
+
     // Initialize safely on load
     (function bootstrapApp() {
       loadProfile();
       updateTicketsAndStatsUI();
+      updateProfileUI();
       updateTableActiveWeaponVisual();
       setupPlayerAvatarEmoteLongPress();
+      FirebaseService.init();
       initServerConnection();
     })();
   </script>
