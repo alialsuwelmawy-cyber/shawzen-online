@@ -897,9 +897,23 @@
     const SERVER_URL = 'https://shawzen-online-server.onrender.com';
     let socket = null;
 
+    function getOrCreatePlayerToken() {
+      try {
+        let tok = sessionStorage.getItem('shawzen_player_token');
+        if (!tok) {
+          tok = 'pt_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+          sessionStorage.setItem('shawzen_player_token', tok);
+        }
+        return tok;
+      } catch (e) {
+        return 'pt_' + Math.random().toString(36).slice(2, 12);
+      }
+    }
+
     const OnlineSession = {
       connected: false,
       socketId: null,
+      playerToken: getOrCreatePlayerToken(),
       roomId: null,
       isHost: false,
       isOnlineMatch: false,
@@ -915,6 +929,7 @@
         code: roomCode,
         roomCode: roomCode,
         id: roomCode,
+        playerToken: OnlineSession.playerToken,
         name: 'Host',
         playerName: 'Host',
         turnDuration: AppState.turnDuration,
@@ -936,6 +951,7 @@
         code: roomCode,
         roomCode: roomCode,
         id: roomCode,
+        playerToken: OnlineSession.playerToken,
         name: 'Player',
         playerName: 'Player',
         weaponId: AppState.equippedWeapon,
@@ -986,7 +1002,9 @@
         OnlineSession.roomId = serverCode;
         AppState.roomCode = serverCode;
       }
-      if (data && data.hostId && socket) {
+      if (data && data.hostToken && OnlineSession.playerToken) {
+        OnlineSession.isHost = (data.hostToken === OnlineSession.playerToken);
+      } else if (data && data.hostId && socket) {
         OnlineSession.isHost = (data.hostId === socket.id);
       } else if (typeof defaultIsHost === 'boolean') {
         OnlineSession.isHost = defaultIsHost;
@@ -1054,6 +1072,12 @@
         if (AppState.pendingRoomCreate && AppState.currentMode === 'private' && OnlineSession.isHost && AppState.roomCode) {
           AppState.pendingRoomCreate = false;
           emitCreateRoomToServer(AppState.roomCode);
+        } else if (OnlineSession.roomId && AppState.currentMode === 'private') {
+          if (OnlineSession.isHost) {
+            emitCreateRoomToServer(OnlineSession.roomId);
+          } else {
+            emitJoinRoomToServer(OnlineSession.roomId);
+          }
         }
 
         if (OnlineSession.pendingJoinCode) {
@@ -1126,7 +1150,9 @@
             const codeEl = document.getElementById('generatedRoomCode');
             if (codeEl) codeEl.textContent = AppState.roomCode;
           }
-          if (data.hostId && socket) {
+          if (data.hostToken && OnlineSession.playerToken) {
+            OnlineSession.isHost = (data.hostToken === OnlineSession.playerToken);
+          } else if (data.hostId && socket) {
             OnlineSession.isHost = (data.hostId === socket.id);
           }
           if (typeof data.turnDuration === 'number') {
@@ -1144,10 +1170,10 @@
         });
       });
 
-      ['join_error', 'room_error', 'error_message'].forEach(evName => {
+      ['join_error', 'room_error', 'error_message', 'lobby_notice'].forEach(evName => {
         socket.on(evName, (err) => {
-          const msg = (typeof err === 'string') ? err : (err && err.message ? err.message : 'تعذر الانضمام للغرفة');
-          if (OnlineSession.joinTimeoutTimer) {
+          const msg = (typeof err === 'string') ? err : (err && err.message ? err.message : 'تعذر تنفيذ الطلب');
+          if (OnlineSession.joinTimeoutTimer && evName !== 'lobby_notice') {
             handleJoinFailure(msg);
           } else {
             setRoomSyncStatus(msg, false);
@@ -1215,7 +1241,7 @@
     function syncOnlineLobbySeats(serverPlayers) {
       if (!Array.isArray(serverPlayers)) return;
       AppState.lobbySeats = serverPlayers.map((p, idx) => {
-        const isMe = Boolean(socket && p.id === socket.id);
+        const isMe = Boolean((socket && p.id === socket.id) || (p.token && p.token === OnlineSession.playerToken));
         const isRoomHost = isMe ? OnlineSession.isHost : (idx === 0 && !OnlineSession.isHost);
         return {
           id: p.id,
@@ -1245,13 +1271,13 @@
       m.doubleDamage = Boolean(state.doubleDamage);
 
       // Reorder players so local socket user is always index 0 ("أنت")
-      const myIdx = state.players.findIndex(p => socket && p.id === socket.id);
+      const myIdx = state.players.findIndex(p => (socket && p.id === socket.id) || (p.token && p.token === OnlineSession.playerToken));
       const ordered = myIdx >= 0
         ? [...state.players.slice(myIdx), ...state.players.slice(0, myIdx)]
         : [...state.players];
 
       m.players = ordered.map((p, idx) => {
-        const isMe = (socket && p.id === socket.id);
+        const isMe = Boolean((socket && p.id === socket.id) || (p.token && p.token === OnlineSession.playerToken));
         return {
           id: p.id,
           name: isMe ? 'أنت' : (p.name || `لاعب ${idx + 1}`),
@@ -2570,6 +2596,7 @@
         socket.emit('update_settings', {
           roomId: OnlineSession.roomId,
           code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           turnDuration: AppState.turnDuration,
           maxPlayers: maxCount
         });
@@ -2707,6 +2734,7 @@
         socket.emit('add_bot', {
           roomId: OnlineSession.roomId,
           code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           bot: botSeat
         });
       }
@@ -2727,6 +2755,7 @@
             socket.emit('remove_bot', {
               roomId: OnlineSession.roomId,
               code: OnlineSession.roomId,
+              playerToken: OnlineSession.playerToken,
               botId: removedBot.id
             });
           }
@@ -2757,6 +2786,7 @@
         socket.emit('start_match', {
           roomId: OnlineSession.roomId,
           code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           turnDuration: AppState.turnDuration,
           players: seatsPayload,
           seats: seatsPayload
@@ -2793,6 +2823,7 @@
         socket.emit('update_settings', {
           roomId: OnlineSession.roomId,
           code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
           turnDuration: seconds,
           maxPlayers: AppState.maxRoomPlayers
         });
