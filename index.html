@@ -147,6 +147,17 @@
     .hp-float-badge {
       animation: floatHpPopup 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
+
+    @keyframes emoteFloatUp {
+      0% { opacity: 0; transform: translate(-50%, 6px) scale(0.5); }
+      18% { opacity: 1; transform: translate(-50%, -10px) scale(1.2); }
+      80% { opacity: 1; transform: translate(-50%, -18px) scale(1.05); }
+      100% { opacity: 0; transform: translate(-50%, -30px) scale(0.85); }
+    }
+
+    .emote-bubble {
+      animation: emoteFloatUp 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
   </style>
 </head>
 <body>
@@ -525,8 +536,17 @@
         </div>
 
         <div class="flex items-center justify-between pt-1.5 border-t border-zinc-800/80">
-          <div class="flex items-center gap-2">
-            <div class="relative w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-base">
+          <div class="flex items-center gap-2 relative">
+            <div id="emotePickerBar" class="hidden absolute bottom-11 right-0 z-40 flex items-center gap-1 px-2 py-1.5 rounded-2xl bg-zinc-900/95 border border-amber-500/50 shadow-2xl">
+              <button type="button" onclick="sendPlayerEmote('😂')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😂</button>
+              <button type="button" onclick="sendPlayerEmote('😎')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😎</button>
+              <button type="button" onclick="sendPlayerEmote('😡')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😡</button>
+              <button type="button" onclick="sendPlayerEmote('😱')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😱</button>
+              <button type="button" onclick="sendPlayerEmote('👏')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">👏</button>
+              <button type="button" onclick="sendPlayerEmote('🔥')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">🔥</button>
+            </div>
+            <div id="selfEmoteBubble" class="hidden pointer-events-none absolute -top-7 right-4 left-auto z-40 px-2 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/60 text-lg shadow-xl"></div>
+            <div id="playerAvatarBtn" title="اضغط مطولاً نصف ثانية لإرسال سمايل تفاعلي" class="relative w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-base cursor-pointer active:scale-95 transition">
               😎
               <span id="playerCuffedBadge" class="hidden absolute -top-1 -right-1 bg-amber-500 text-zinc-950 text-[9px] font-black px-1 rounded">⛓️</span>
             </div>
@@ -749,7 +769,7 @@
             <span class="text-lg">🛡️</span>
             <div>
               <div class="font-bold text-sky-300">الدرع</div>
-              <div class="text-[11px] text-zinc-400">يحميك من أدوات الخصوم الموجهة ضدك (السارق، المبادل، والقيود) ويبقى فعالاً حتى يصد أداة واحدة فيُلغى.</div>
+              <div class="text-[11px] text-zinc-400">يحميك من أدوات الخصوم الموجهة ضدك (السارق، المبادل، والقيود) لمدة 3 أدوار أو حتى يصد أداة هجومية واحدة فيُلغى.</div>
             </div>
           </div>
 
@@ -1209,6 +1229,11 @@
         }
       });
 
+      socket.on('player_emote', (ev) => {
+        if (!ev || !ev.emoji || !AppState.match.active) return;
+        showPlayerEmoteBubble(ev.playerId, ev.emoji);
+      });
+
       socket.on('thief_blocked', () => {
         toggleModal('opponentPickerModal', false);
         AppState.pendingTargetedItem = null;
@@ -1369,6 +1394,7 @@
           eliminated: (p.hp <= 0) || Boolean(p.eliminated),
           cuffed: Boolean(p.cuffed),
           hasShield: Boolean(p.hasShield),
+          shieldTurns: typeof p.shieldTurns === 'number' ? p.shieldTurns : (p.hasShield ? 3 : 0),
           pillowTurns: p.pillowTurns || 0,
           itemsCount: typeof p.itemsCount === 'number' ? p.itemsCount : (Array.isArray(p.items) ? p.items.length : 0),
           items: Array.isArray(p.items) ? p.items : []
@@ -1744,7 +1770,7 @@
         id: 'shield',
         name: 'الدرع',
         icon: '🛡️',
-        desc: 'يحميك من الأدوات التي يستخدمها الخصوم ضدك (السارق، المبادل، والقيود) ويبقى فعالاً حتى يصد أداة واحدة فيُلغى.'
+        desc: 'يحميك من الأدوات التي يستخدمها الخصوم ضدك (السارق، المبادل، والقيود) لمدة 3 أدوار أو حتى يصد أداة هجومية واحدة فيُلغى.'
       },
       pillow: {
         id: 'pillow',
@@ -2074,7 +2100,8 @@
         isBusy: false,
         bannerHoldUntil: 0,
         bannerQueueTimer: null,
-        bleedingTargets: {}
+        bleedingTargets: {},
+        activeEmotes: {}
       }
     };
 
@@ -3092,6 +3119,7 @@
           eliminated: false,
           cuffed: false,
           hasShield: false,
+          shieldTurns: 0,
           pillowTurns: 0,
           items: []
         };
@@ -3220,12 +3248,24 @@
     }
 
     function tickPlayerPillowOnTurnEnd(player) {
-      if (!player || player.pillowTurns <= 0) return;
-      player.pillowTurns--;
-      if (player.pillowTurns <= 0) {
-        player.pillowTurns = 0;
-        if (player.isSelf) {
-          setActionBanner('🛏️ انتهت مدة وسادتك السرية (مرّ دوران).', 'neutral', false);
+      if (!player) return;
+      if (player.pillowTurns > 0) {
+        player.pillowTurns--;
+        if (player.pillowTurns <= 0) {
+          player.pillowTurns = 0;
+          if (player.isSelf) {
+            setActionBanner('🛏️ انتهت مدة وسادتك السرية (مرّ دوران).', 'neutral', false);
+          }
+        }
+      }
+      if (player.shieldTurns > 0) {
+        player.shieldTurns--;
+        if (player.shieldTurns <= 0) {
+          player.shieldTurns = 0;
+          player.hasShield = false;
+          if (player.isSelf) {
+            setActionBanner('🛡️ انتهت مدة درعك الواقي (مرّت 3 أدوار).', 'neutral', false);
+          }
         }
       }
     }
@@ -3389,8 +3429,12 @@
       else pCuffEl.classList.add('hidden');
 
       const pShieldEl = document.getElementById('playerShieldBadge');
-      if (me.hasShield) pShieldEl.classList.remove('hidden');
-      else pShieldEl.classList.add('hidden');
+      if (me.hasShield) {
+        pShieldEl.textContent = me.shieldTurns > 0 ? `🛡️ درع (${me.shieldTurns})` : '🛡️ درع';
+        pShieldEl.classList.remove('hidden');
+      } else {
+        pShieldEl.classList.add('hidden');
+      }
 
       const pPillowEl = document.getElementById('playerPillowBadge');
       if (me.pillowTurns > 0) {
@@ -3444,7 +3488,8 @@
         if (isDead) {
           activeStatusHtml = '<span class="text-[9px] text-zinc-500 font-bold">مُقصى 💀</span>';
         } else if (opp.hasShield) {
-          activeStatusHtml = '<span class="text-[9px] bg-sky-500/25 text-sky-300 px-1 rounded font-black" title="محمي بدرع">🛡️</span>';
+          const sTxt = opp.shieldTurns > 0 ? `🛡️${opp.shieldTurns}` : '🛡️';
+          activeStatusHtml = `<span class="text-[9px] bg-sky-500/25 text-sky-300 px-1 rounded font-black" title="محمي بدرع">${sTxt}</span>`;
         }
 
         const bloodDripsHtml = isBleeding ? `
@@ -3460,7 +3505,15 @@
           </div>
         ` : '';
 
+        const oppEmote = m.activeEmotes && m.activeEmotes[opp.id] && m.activeEmotes[opp.id].expiresAt > Date.now()
+          ? m.activeEmotes[opp.id].emoji
+          : null;
+        const oppEmoteHtml = oppEmote
+          ? `<div class="emote-bubble pointer-events-none absolute top-1 left-1/2 z-30 px-2 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/70 text-base shadow-xl">${oppEmote}</div>`
+          : '';
+
         card.innerHTML = `
+          ${oppEmoteHtml}
           ${bloodDripsHtml}
           <div class="flex items-center justify-between gap-1 relative z-10">
             <div class="flex items-center gap-1 min-w-0">
@@ -3600,6 +3653,7 @@
     function checkAndConsumeShield(attacker, defender, itemName) {
       if (!defender.hasShield) return false;
       defender.hasShield = false;
+      defender.shieldTurns = 0;
       AudioEngine.shieldBlock();
       setActionBanner(`🛡️ درع ${defender.name} تصدّى لـ (${itemName}) من ${attacker.name} وتحطّم الدرع!`, 'safe', true);
       return true;
@@ -3942,7 +3996,8 @@
         m.itemsUsedCount++;
         AudioEngine.shieldBlock();
         me.hasShield = true;
-        setActionBanner('🛡️ فعّلت الدرع! سيحميك من السارق والمبادل والقيود حتى يصد أداة واحدة.', 'safe');
+        me.shieldTurns = 3;
+        setActionBanner('🛡️ فعّلت الدرع لمدة 3 أدوار (يصد أداة هجومية واحدة).', 'safe');
       }
       else if (itemKey === 'pillow') {
         me.items.splice(slotIndex, 1);
@@ -4125,6 +4180,7 @@
       if (shieldIdx !== -1 && !bot.hasShield) {
         bot.items.splice(shieldIdx, 1);
         bot.hasShield = true;
+        bot.shieldTurns = 3;
         AudioEngine.shieldBlock();
         setActionBanner(`🛡️ ${bot.name} فعّل الدرع لحماية نفسه من الأدوات!`, 'safe', true);
         renderGameUI();
@@ -4402,11 +4458,96 @@
       showScreen('screen-menu');
     }
 
+    function setupPlayerAvatarEmoteLongPress() {
+      const avatarBtn = document.getElementById('playerAvatarBtn');
+      const bar = document.getElementById('emotePickerBar');
+      if (!avatarBtn || !bar) return;
+
+      let pressTimer = null;
+      const startPress = () => {
+        pressTimer = setTimeout(() => {
+          AudioEngine.itemUse();
+          bar.classList.toggle('hidden');
+        }, 500);
+      };
+      const cancelPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      };
+
+      avatarBtn.addEventListener('pointerdown', startPress);
+      avatarBtn.addEventListener('pointerup', cancelPress);
+      avatarBtn.addEventListener('pointerleave', cancelPress);
+      avatarBtn.addEventListener('pointercancel', cancelPress);
+      avatarBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+      document.addEventListener('pointerdown', (e) => {
+        if (!bar.classList.contains('hidden') && !bar.contains(e.target) && !avatarBtn.contains(e.target)) {
+          bar.classList.add('hidden');
+        }
+      });
+    }
+
+    function sendPlayerEmote(emoji) {
+      const bar = document.getElementById('emotePickerBar');
+      if (bar) bar.classList.add('hidden');
+      AudioEngine.itemUse();
+
+      const me = getSelfPlayer();
+      if (me) {
+        showPlayerEmoteBubble(me.id, emoji);
+      }
+
+      if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected && OnlineSession.roomId) {
+        socket.emit('send_emote', {
+          roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
+          emoji
+        });
+      }
+    }
+
+    function showPlayerEmoteBubble(playerId, emoji) {
+      const m = AppState.match;
+      const me = getSelfPlayer();
+      if (me && (playerId === me.id || (socket && playerId === socket.id))) {
+        const selfBubble = document.getElementById('selfEmoteBubble');
+        if (selfBubble) {
+          selfBubble.textContent = emoji;
+          selfBubble.classList.remove('hidden', 'emote-bubble');
+          void selfBubble.offsetWidth;
+          selfBubble.classList.add('emote-bubble');
+          clearTimeout(selfBubble._hideTimer);
+          selfBubble._hideTimer = setTimeout(() => {
+            selfBubble.classList.add('hidden');
+          }, 2400);
+        }
+        return;
+      }
+
+      if (!m.activeEmotes) m.activeEmotes = {};
+      m.activeEmotes[playerId] = {
+        emoji,
+        expiresAt: Date.now() + 2400
+      };
+      renderGameUI();
+      setTimeout(() => {
+        if (m.activeEmotes && m.activeEmotes[playerId] && m.activeEmotes[playerId].expiresAt <= Date.now() + 50) {
+          delete m.activeEmotes[playerId];
+          renderGameUI();
+        }
+      }, 2450);
+    }
+
     // Initialize safely on load
     (function bootstrapApp() {
       loadProfile();
       updateTicketsAndStatsUI();
       updateTableActiveWeaponVisual();
+      setupPlayerAvatarEmoteLongPress();
       initServerConnection();
     })();
   </script>
