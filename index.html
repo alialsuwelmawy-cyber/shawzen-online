@@ -156,8 +156,38 @@
     }
 
     .emote-bubble {
-      animation: emoteFloatUp 2.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation: emoteFloatUp 2.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
+
+    @keyframes emoteBombBoom {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      25% { transform: scale(1.35) rotate(-10deg); filter: drop-shadow(0 0 8px #ef4444); }
+      50% { transform: scale(0.9) rotate(10deg); }
+      75% { transform: scale(1.25) rotate(-6deg); filter: drop-shadow(0 0 10px #f59e0b); }
+    }
+    @keyframes emoteGgGlow {
+      0%, 100% { transform: scale(1); text-shadow: 0 0 6px #fbbf24; }
+      50% { transform: scale(1.22); text-shadow: 0 0 14px #f59e0b, 0 0 22px #ef4444; }
+    }
+    @keyframes emoteSkullShake {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      25% { transform: translateX(-3px) rotate(-12deg); }
+      50% { transform: translateX(3px) rotate(12deg); }
+      75% { transform: translateX(-2px) rotate(-8deg); }
+    }
+    @keyframes emoteTargetPulse {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.28) rotate(18deg); }
+    }
+    @keyframes emoteFireDance {
+      0%, 100% { transform: scale(1) translateY(0); }
+      50% { transform: scale(1.25) translateY(-3px); filter: drop-shadow(0 0 8px #f97316); }
+    }
+    .anim-emote-bomb { display: inline-block; animation: emoteBombBoom 0.65s ease-in-out infinite; }
+    .anim-emote-gg { display: inline-block; animation: emoteGgGlow 0.7s ease-in-out infinite; font-weight: 900; color: #fde047; letter-spacing: 0.05em; }
+    .anim-emote-skull { display: inline-block; animation: emoteSkullShake 0.45s ease-in-out infinite; }
+    .anim-emote-target { display: inline-block; animation: emoteTargetPulse 0.65s ease-in-out infinite; }
+    .anim-emote-fire { display: inline-block; animation: emoteFireDance 0.55s ease-in-out infinite; }
   </style>
 </head>
 <body>
@@ -537,13 +567,12 @@
 
         <div class="flex items-center justify-between pt-1.5 border-t border-zinc-800/80">
           <div class="flex items-center gap-2 relative">
-            <div id="emotePickerBar" class="hidden absolute bottom-11 right-0 z-40 flex items-center gap-1 px-2 py-1.5 rounded-2xl bg-zinc-900/95 border border-amber-500/50 shadow-2xl">
-              <button type="button" onclick="sendPlayerEmote('😂')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😂</button>
-              <button type="button" onclick="sendPlayerEmote('😎')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😎</button>
-              <button type="button" onclick="sendPlayerEmote('😡')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😡</button>
-              <button type="button" onclick="sendPlayerEmote('😱')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">😱</button>
-              <button type="button" onclick="sendPlayerEmote('👏')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">👏</button>
-              <button type="button" onclick="sendPlayerEmote('🔥')" class="w-7 h-7 rounded-xl hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition">🔥</button>
+            <div id="emotePickerBar" class="hidden absolute bottom-11 right-0 z-40 flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-zinc-900/95 border border-amber-500/50 shadow-2xl">
+              <button type="button" onclick="sendPlayerEmote('bomb')" title="تفجير!" class="w-8 h-8 rounded-xl bg-zinc-950 hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition"><span class="anim-emote-bomb">💥</span></button>
+              <button type="button" onclick="sendPlayerEmote('gg')" title="GG" class="w-9 h-8 rounded-xl bg-zinc-950 hover:bg-zinc-800 active:scale-90 text-xs flex items-center justify-center cursor-pointer transition"><span class="anim-emote-gg">GG</span></button>
+              <button type="button" onclick="sendPlayerEmote('skull')" title="نهايتك!" class="w-8 h-8 rounded-xl bg-zinc-950 hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition"><span class="anim-emote-skull">💀</span></button>
+              <button type="button" onclick="sendPlayerEmote('target')" title="في المرمى!" class="w-8 h-8 rounded-xl bg-zinc-950 hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition"><span class="anim-emote-target">🎯</span></button>
+              <button type="button" onclick="sendPlayerEmote('fire')" title="ناري!" class="w-8 h-8 rounded-xl bg-zinc-950 hover:bg-zinc-800 active:scale-90 text-base flex items-center justify-center cursor-pointer transition"><span class="anim-emote-fire">🔥</span></button>
             </div>
             <div id="selfEmoteBubble" class="hidden pointer-events-none absolute -top-7 right-4 left-auto z-40 px-2 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/60 text-lg shadow-xl"></div>
             <div id="playerAvatarBtn" title="اضغط مطولاً نصف ثانية لإرسال سمايل تفاعلي" class="relative w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-base cursor-pointer active:scale-95 transition">
@@ -561,9 +590,15 @@
             </div>
           </div>
 
-          <button type="button" onclick="confirmLeaveGame()" class="px-3 py-1 rounded-xl bg-zinc-900 hover:bg-red-950/60 border border-zinc-700 text-[11px] font-bold text-zinc-400 hover:text-red-300 transition cursor-pointer">
-            انسحاب 🏳️
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="openChatBtn" onclick="openChatModal()" class="relative w-8 h-8 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm transition cursor-pointer" title="محادثة الغرفة">
+              💬
+              <span id="chatUnreadBadge" class="hidden absolute -top-1.5 -left-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow">0</span>
+            </button>
+            <button type="button" onclick="confirmLeaveGame()" class="px-3 py-1 rounded-xl bg-zinc-900 hover:bg-red-950/60 border border-zinc-700 text-[11px] font-bold text-zinc-400 hover:text-red-300 transition cursor-pointer">
+              انسحاب 🏳️
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -907,6 +942,41 @@
       </div>
     </div>
 
+    <!-- 11. ROOM CHAT MODAL (MESSAGES + BASIC SMILEYS) -->
+    <div id="chatModal" class="hidden absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
+      <div class="w-full max-w-sm h-[72vh] flex flex-col rounded-3xl bg-zinc-900 border border-zinc-700 p-4 shadow-2xl">
+        <div class="flex items-center justify-between pb-2.5 border-b border-zinc-800">
+          <div class="flex items-center gap-2">
+            <span class="text-base">💬</span>
+            <h3 class="text-sm font-black text-white">محادثة الغرفة</h3>
+          </div>
+          <button type="button" onclick="closeChatModal()" class="w-7 h-7 rounded-full bg-zinc-800 text-zinc-300 text-xs font-bold cursor-pointer">✕</button>
+        </div>
+
+        <div id="chatMessagesList" class="flex-1 overflow-y-auto py-3 space-y-2 text-right">
+          <div class="text-center text-[11px] text-zinc-500 py-4">لا توجد رسائل بعد... ابدأ المحادثة!</div>
+        </div>
+
+        <!-- Basic Smileys Bar inside Chat -->
+        <div class="flex items-center justify-between gap-1 py-1.5 px-2 mb-2 rounded-2xl bg-zinc-950 border border-zinc-800">
+          <button type="button" onclick="insertChatSmiley('😂')" class="w-8 h-8 rounded-xl hover:bg-zinc-800 text-base cursor-pointer transition">😂</button>
+          <button type="button" onclick="insertChatSmiley('😎')" class="w-8 h-8 rounded-xl hover:bg-zinc-800 text-base cursor-pointer transition">😎</button>
+          <button type="button" onclick="insertChatSmiley('😡')" class="w-8 h-8 rounded-xl hover:bg-zinc-800 text-base cursor-pointer transition">😡</button>
+          <button type="button" onclick="insertChatSmiley('😱')" class="w-8 h-8 rounded-xl hover:bg-zinc-800 text-base cursor-pointer transition">😱</button>
+          <button type="button" onclick="insertChatSmiley('👏')" class="w-8 h-8 rounded-xl hover:bg-zinc-800 text-base cursor-pointer transition">👏</button>
+          <button type="button" onclick="insertChatSmiley('🔥')" class="w-8 h-8 rounded-xl hover:bg-zinc-800 text-base cursor-pointer transition">🔥</button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input id="chatMessageInput" type="text" maxlength="200" placeholder="اكتب رسالتك هنا..." onkeydown="if(event.key==='Enter') sendChatMessage()"
+            class="flex-1 px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-white focus:outline-none focus:border-amber-500" />
+          <button type="button" onclick="sendChatMessage()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs cursor-pointer">
+            إرسال
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ==================== COMPLETE GAME ENGINE + ONLINE SERVER INTEGRATION ==================== -->
@@ -1230,8 +1300,15 @@
       });
 
       socket.on('player_emote', (ev) => {
-        if (!ev || !ev.emoji || !AppState.match.active) return;
-        showPlayerEmoteBubble(ev.playerId, ev.emoji);
+        if (!ev || !AppState.match.active) return;
+        const eId = ev.emoteId || ev.emoji;
+        if (!eId) return;
+        showPlayerEmoteBubble(ev.playerId, eId, ev.playerToken);
+      });
+
+      socket.on('chat_message', (msg) => {
+        if (!msg || !msg.text) return;
+        handleIncomingChatMessage(msg);
       });
 
       socket.on('thief_blocked', () => {
@@ -1383,6 +1460,7 @@
         const isMe = Boolean((socket && p.id === socket.id) || (p.token && p.token === OnlineSession.playerToken));
         return {
           id: p.id,
+          token: p.token || null,
           name: isMe ? 'أنت' : (p.name || `لاعب ${idx + 1}`),
           avatar: isMe ? '😎' : (p.isBot ? '🤖' : '🧑🏻'),
           isBot: Boolean(p.isBot),
@@ -3474,7 +3552,7 @@
           borderClass = 'border-red-500 bg-red-950/25';
         }
 
-        card.className = `relative overflow-hidden rounded-xl p-1.5 border transition cursor-pointer select-none ${borderClass}`;
+        card.className = `relative overflow-visible rounded-xl p-1.5 border transition cursor-pointer select-none ${borderClass}`;
 
         const oppMaxHp = opp.maxHp || m.maxHp || 5;
         let heartsHtml = '';
@@ -3505,11 +3583,10 @@
           </div>
         ` : '';
 
-        const oppEmote = m.activeEmotes && m.activeEmotes[opp.id] && m.activeEmotes[opp.id].expiresAt > Date.now()
-          ? m.activeEmotes[opp.id].emoji
-          : null;
-        const oppEmoteHtml = oppEmote
-          ? `<div class="emote-bubble pointer-events-none absolute top-1 left-1/2 z-30 px-2 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/70 text-base shadow-xl">${oppEmote}</div>`
+        const emoteRecord = m.activeEmotes && (m.activeEmotes[opp.id] || (opp.token && m.activeEmotes[opp.token]));
+        const oppEmoteId = emoteRecord && emoteRecord.expiresAt > Date.now() ? emoteRecord.emoteId : null;
+        const oppEmoteHtml = oppEmoteId
+          ? `<div class="emote-bubble pointer-events-none absolute -top-2 left-1/2 z-40 px-2.5 py-0.5 rounded-full bg-zinc-900/95 border border-amber-400/80 text-base shadow-2xl">${renderAnimatedEmoteHtml(oppEmoteId)}</div>`
           : '';
 
         card.innerHTML = `
@@ -4490,14 +4567,26 @@
       });
     }
 
-    function sendPlayerEmote(emoji) {
+    const ANIMATED_EMOTES = {
+      bomb: '<span class="anim-emote-bomb">💥</span>',
+      gg: '<span class="anim-emote-gg">GG</span>',
+      skull: '<span class="anim-emote-skull">💀</span>',
+      target: '<span class="anim-emote-target">🎯</span>',
+      fire: '<span class="anim-emote-fire">🔥</span>'
+    };
+
+    function renderAnimatedEmoteHtml(emoteId) {
+      return ANIMATED_EMOTES[emoteId] || `<span>${emoteId}</span>`;
+    }
+
+    function sendPlayerEmote(emoteId) {
       const bar = document.getElementById('emotePickerBar');
       if (bar) bar.classList.add('hidden');
       AudioEngine.itemUse();
 
       const me = getSelfPlayer();
       if (me) {
-        showPlayerEmoteBubble(me.id, emoji);
+        showPlayerEmoteBubble(me.id, emoteId, OnlineSession.playerToken);
       }
 
       if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected && OnlineSession.roomId) {
@@ -4505,41 +4594,174 @@
           roomId: OnlineSession.roomId,
           code: OnlineSession.roomId,
           playerToken: OnlineSession.playerToken,
-          emoji
+          emoteId
         });
       }
     }
 
-    function showPlayerEmoteBubble(playerId, emoji) {
+    function showPlayerEmoteBubble(playerId, emoteId, playerToken = null) {
       const m = AppState.match;
       const me = getSelfPlayer();
-      if (me && (playerId === me.id || (socket && playerId === socket.id))) {
+      const isMe = Boolean(
+        (me && playerId === me.id) ||
+        (socket && playerId === socket.id) ||
+        (playerToken && playerToken === OnlineSession.playerToken)
+      );
+
+      if (isMe) {
         const selfBubble = document.getElementById('selfEmoteBubble');
         if (selfBubble) {
-          selfBubble.textContent = emoji;
+          selfBubble.innerHTML = renderAnimatedEmoteHtml(emoteId);
           selfBubble.classList.remove('hidden', 'emote-bubble');
           void selfBubble.offsetWidth;
           selfBubble.classList.add('emote-bubble');
           clearTimeout(selfBubble._hideTimer);
           selfBubble._hideTimer = setTimeout(() => {
             selfBubble.classList.add('hidden');
-          }, 2400);
+          }, 2600);
         }
         return;
       }
 
       if (!m.activeEmotes) m.activeEmotes = {};
-      m.activeEmotes[playerId] = {
-        emoji,
-        expiresAt: Date.now() + 2400
+      const matchedOpp = m.players.find(p => !p.isSelf && (p.id === playerId || (playerToken && p.token === playerToken)));
+      const key = matchedOpp ? matchedOpp.id : playerId;
+      const record = {
+        emoteId,
+        expiresAt: Date.now() + 2600
       };
+      m.activeEmotes[key] = record;
+      if (playerToken) m.activeEmotes[playerToken] = record;
+
       renderGameUI();
       setTimeout(() => {
-        if (m.activeEmotes && m.activeEmotes[playerId] && m.activeEmotes[playerId].expiresAt <= Date.now() + 50) {
-          delete m.activeEmotes[playerId];
+        if (m.activeEmotes && m.activeEmotes[key] && m.activeEmotes[key].expiresAt <= Date.now() + 50) {
+          delete m.activeEmotes[key];
+          if (playerToken) delete m.activeEmotes[playerToken];
           renderGameUI();
         }
-      }, 2450);
+      }, 2650);
+    }
+
+    // ==================== ROOM CHAT SYSTEM ====================
+    const ChatState = {
+      isOpen: false,
+      unreadCount: 0,
+      messages: []
+    };
+
+    function updateChatUnreadBadge() {
+      const badge = document.getElementById('chatUnreadBadge');
+      if (!badge) return;
+      if (ChatState.unreadCount > 0 && !ChatState.isOpen) {
+        badge.textContent = ChatState.unreadCount > 99 ? '99+' : String(ChatState.unreadCount);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function openChatModal() {
+      ChatState.isOpen = true;
+      ChatState.unreadCount = 0;
+      updateChatUnreadBadge();
+      renderChatMessages();
+      toggleModal('chatModal', true);
+      setTimeout(() => {
+        const inp = document.getElementById('chatMessageInput');
+        if (inp) inp.focus();
+      }, 60);
+    }
+
+    function closeChatModal() {
+      ChatState.isOpen = false;
+      toggleModal('chatModal', false);
+      updateChatUnreadBadge();
+    }
+
+    function insertChatSmiley(smiley) {
+      const inp = document.getElementById('chatMessageInput');
+      if (!inp) return;
+      inp.value = (inp.value + smiley).slice(0, 200);
+      inp.focus();
+    }
+
+    function sendChatMessage() {
+      const inp = document.getElementById('chatMessageInput');
+      if (!inp) return;
+      const text = inp.value.trim();
+      if (!text) return;
+      inp.value = '';
+
+      if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected && OnlineSession.roomId) {
+        socket.emit('chat_message', {
+          roomId: OnlineSession.roomId,
+          code: OnlineSession.roomId,
+          playerToken: OnlineSession.playerToken,
+          text
+        });
+      } else {
+        handleIncomingChatMessage({
+          senderId: 'player',
+          senderToken: OnlineSession.playerToken,
+          senderName: 'أنت',
+          text,
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    function handleIncomingChatMessage(msg) {
+      const isMe = Boolean(
+        (socket && msg.senderId === socket.id) ||
+        (msg.senderToken && msg.senderToken === OnlineSession.playerToken) ||
+        msg.senderId === 'player'
+      );
+
+      ChatState.messages.push({
+        senderName: isMe ? 'أنت' : (msg.senderName || 'لاعب'),
+        text: msg.text,
+        isMe
+      });
+      if (ChatState.messages.length > 60) {
+        ChatState.messages.shift();
+      }
+
+      if (ChatState.isOpen) {
+        renderChatMessages();
+      } else if (!isMe) {
+        ChatState.unreadCount += 1;
+        updateChatUnreadBadge();
+      }
+    }
+
+    function renderChatMessages() {
+      const list = document.getElementById('chatMessagesList');
+      if (!list) return;
+      if (ChatState.messages.length === 0) {
+        list.innerHTML = '<div class="text-center text-[11px] text-zinc-500 py-4">لا توجد رسائل بعد... ابدأ المحادثة!</div>';
+        return;
+      }
+      list.innerHTML = '';
+      ChatState.messages.forEach((m) => {
+        const wrap = document.createElement('div');
+        wrap.className = m.isMe ? 'flex flex-col items-start' : 'flex flex-col items-end';
+        const bubble = document.createElement('div');
+        bubble.className = m.isMe
+          ? 'max-w-[82%] px-3 py-2 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-xs text-white'
+          : 'max-w-[82%] px-3 py-2 rounded-2xl bg-zinc-800 border border-zinc-700 text-xs text-zinc-100';
+        const nameEl = document.createElement('div');
+        nameEl.className = 'text-[9px] font-bold text-zinc-400 mb-0.5';
+        nameEl.textContent = m.senderName;
+        const textEl = document.createElement('div');
+        textEl.className = 'break-words';
+        textEl.textContent = m.text;
+        bubble.appendChild(nameEl);
+        bubble.appendChild(textEl);
+        wrap.appendChild(bubble);
+        list.appendChild(wrap);
+      });
+      list.scrollTop = list.scrollHeight;
     }
 
     // Initialize safely on load
