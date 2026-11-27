@@ -194,6 +194,8 @@
 
   <!-- Mobile App Container -->
   <div id="appFrame" class="phone-frame">
+    <!-- Hidden container for WebRTC remote audio streams -->
+    <div id="voiceAudioContainer" class="hidden" aria-hidden="true"></div>
 
     <!-- Player Hit Blood Vignette Overlay -->
     <div id="selfBloodVignette" class="hidden pointer-events-none absolute inset-0 z-30"
@@ -383,9 +385,15 @@
     <!-- ==================== SCREEN 2: LOBBY / MATCHMAKING ==================== -->
     <section id="screen-lobby" class="hidden flex-1 flex flex-col justify-between p-4 overflow-y-auto">
       <div>
-        <button type="button" onclick="leaveOnlineLobby()" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 cursor-pointer">
-          → رجوع للقائمة
-        </button>
+        <div class="flex items-center justify-between gap-2">
+          <button type="button" onclick="leaveOnlineLobby()" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-white bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 cursor-pointer">
+            → رجوع للقائمة
+          </button>
+          <button type="button" id="lobbyVoiceMicBtn" onclick="toggleVoiceMicButton()" class="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-300 hover:text-white bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-700 transition cursor-pointer" title="تفعيل الدردشة الصوتية / كتم المايك">
+            <span id="lobbyVoiceMicIcon">🎙️</span>
+            <span id="lobbyVoiceMicText">تفعيل الصوت</span>
+          </button>
+        </div>
 
         <div class="mt-3 text-center">
           <span id="lobbyBadge" class="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
@@ -591,6 +599,10 @@
           </div>
 
           <div class="flex items-center gap-1.5">
+            <button type="button" id="gameVoiceMicBtn" onclick="toggleVoiceMicButton()" class="relative w-8 h-8 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm transition cursor-pointer" title="الدردشة الصوتية / كتم المايك">
+              <span id="gameVoiceMicIcon">🎙️</span>
+              <span id="gameVoiceMicStatusDot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-zinc-950"></span>
+            </button>
             <button type="button" id="openChatBtn" onclick="openChatModal()" class="relative w-8 h-8 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm transition cursor-pointer" title="محادثة الغرفة">
               💬
               <span id="chatUnreadBadge" class="hidden absolute -top-1.5 -left-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow">0</span>
@@ -1311,6 +1323,31 @@
         handleIncomingChatMessage(msg);
       });
 
+      socket.on('voice_peers', (data) => {
+        if (!data || !Array.isArray(data.peers)) return;
+        VoiceManager.handleVoicePeers(data.peers);
+      });
+
+      socket.on('voice_peer_joined', (peer) => {
+        if (!peer || !peer.socketId) return;
+        VoiceManager.handlePeerJoined(peer);
+      });
+
+      socket.on('voice_peer_left', (peer) => {
+        if (!peer) return;
+        VoiceManager.handlePeerLeft(peer.socketId, peer.token);
+      });
+
+      socket.on('voice_signal', (data) => {
+        if (!data || !data.fromSocketId || !data.signal) return;
+        VoiceManager.handleSignal(data.fromSocketId, data.fromToken, data.signal);
+      });
+
+      socket.on('voice_status_updated', (data) => {
+        if (!data) return;
+        VoiceManager.handleVoiceStatusUpdated(data);
+      });
+
       socket.on('thief_blocked', () => {
         toggleModal('opponentPickerModal', false);
         AppState.pendingTargetedItem = null;
@@ -1424,6 +1461,9 @@
         const isRoomHost = isMe ? OnlineSession.isHost : (idx === 0 && !OnlineSession.isHost);
         return {
           id: p.id,
+          token: p.token || null,
+          voiceActive: Boolean(p.voiceActive),
+          voiceMuted: Boolean(p.voiceMuted),
           name: isMe
             ? (OnlineSession.isHost ? 'أنت (المضيف)' : 'أنت')
             : (isRoomHost ? `${p.name || 'المضيف'} (المضيف)` : (p.name || `لاعب ${idx + 1}`)),
@@ -1467,6 +1507,8 @@
           isSelf: isMe,
           weaponId: isMe ? AppState.equippedWeapon : (p.weaponId || 'shotgun'),
           skinId: isMe ? AppState.equippedSkin : (p.skinId || 'classic'),
+          voiceActive: Boolean(p.voiceActive),
+          voiceMuted: Boolean(p.voiceMuted),
           hp: typeof p.hp === 'number' ? p.hp : 5,
           maxHp: p.maxHp || 5,
           eliminated: (p.hp <= 0) || Boolean(p.eliminated),
@@ -2574,6 +2616,7 @@
     }
 
     function leaveOnlineLobby() {
+      VoiceManager.leaveVoice(true);
       if (socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('leave_room', { roomId: OnlineSession.roomId });
       }
@@ -2858,8 +2901,13 @@
         const card = document.createElement('div');
         if (seat) {
           const wMeta = getWeaponMeta(seat.isSelf ? AppState.equippedWeapon : seat.weaponId);
-          card.className = 'p-2 rounded-2xl bg-zinc-900 border border-emerald-500/50 text-center flex flex-col items-center justify-center';
+          const isMutedLocally = !seat.isSelf && !seat.isBot && VoiceManager.isRemoteMuted(seat.id, seat.token);
+          const speakerBtnHtml = (!seat.isSelf && !seat.isBot && OnlineSession.roomId)
+            ? `<button type="button" onclick="event.stopPropagation(); VoiceManager.toggleMuteRemote('${seat.id}', '${seat.token || ''}')" title="${isMutedLocally ? 'إلغاء كتم صوت هذا اللاعب' : 'كتم صوت هذا اللاعب'}" class="absolute top-1.5 left-1.5 w-6 h-6 rounded-lg ${isMutedLocally ? 'bg-red-950/80 border-red-500/60 text-red-400' : 'bg-zinc-800/90 border-zinc-600 text-emerald-300'} border text-[11px] flex items-center justify-center cursor-pointer transition">${isMutedLocally ? '🔇' : '🔊'}</button>`
+            : '';
+          card.className = 'relative p-2 rounded-2xl bg-zinc-900 border border-emerald-500/50 text-center flex flex-col items-center justify-center';
           card.innerHTML = `
+            ${speakerBtnHtml}
             <div class="text-xl mb-0.5">${seat.avatar}</div>
             <div class="text-[10px] font-extrabold text-white truncate w-full">${seat.name}</div>
             <div class="text-[8px] text-purple-300 font-bold truncate w-full">${wMeta.name}</div>
@@ -2879,6 +2927,7 @@
       if (botCtrl) {
         botCtrl.style.display = (!OnlineSession.roomId || OnlineSession.isHost) ? 'flex' : 'none';
       }
+      VoiceManager.updateVoiceButtonsUI();
 
       const startBtn = document.getElementById('startLobbyMatchBtn');
       if (startBtn) {
@@ -3598,6 +3647,10 @@
               <span class="text-[10px] font-extrabold text-white truncate">${opp.name}</span>
             </div>
             <div class="flex items-center gap-0.5">
+              ${(!opp.isBot && OnlineSession.isOnlineMatch) ? (() => {
+                const mutedRem = VoiceManager.isRemoteMuted(opp.id, opp.token);
+                return `<button type="button" onclick="event.stopPropagation(); VoiceManager.toggleMuteRemote('${opp.id}', '${opp.token || ''}')" title="${mutedRem ? 'إلغاء كتم صوت هذا اللاعب' : 'كتم صوت هذا اللاعب'}" class="w-5 h-5 rounded-md ${mutedRem ? 'bg-red-950/90 border-red-500/60 text-red-400' : 'bg-zinc-800/90 border-zinc-600 text-emerald-300'} border text-[10px] flex items-center justify-center cursor-pointer transition">${mutedRem ? '🔇' : '🔊'}</button>`;
+              })() : ''}
               ${isTarget && !isDead ? '<span class="text-[10px] leading-none">🎯</span>' : ''}
               ${opp.cuffed && !isDead ? '<span class="text-[9px] bg-amber-500 text-zinc-950 px-1 rounded font-black">⛓️</span>' : ''}
             </div>
@@ -3697,6 +3750,7 @@
 
       document.getElementById('inGameAdItemBtn').style.display =
         (me.items.length < MAX_ITEM_SLOTS && isPlayerTurn) ? 'flex' : 'none';
+      VoiceManager.updateVoiceButtonsUI();
     }
 
     function showItemTooltip(item) {
@@ -4514,6 +4568,7 @@
     }
 
     function backToMenuFromEnd() {
+      VoiceManager.leaveVoice(true);
       AppState.isDoubleOrNothingRun = false;
       OnlineSession.isOnlineMatch = false;
       OnlineSession.roomId = null;
@@ -4523,6 +4578,7 @@
     }
 
     function confirmLeaveGame() {
+      VoiceManager.leaveVoice(true);
       if (OnlineSession.isOnlineMatch && socket && OnlineSession.connected && OnlineSession.roomId) {
         socket.emit('leave_room', { roomId: OnlineSession.roomId });
       }
@@ -4762,6 +4818,385 @@
         list.appendChild(wrap);
       });
       list.scrollTop = list.scrollHeight;
+    }
+
+    // ==================== WEBRTC LIVE VOICE CHAT MANAGER ====================
+    const VoiceManager = (() => {
+      const ICE_CONFIG = {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      };
+
+      const state = {
+        joined: false,
+        micMuted: false,
+        listenOnly: false,
+        localStream: null,
+        peers: {},          // socketId -> { pc, token, audioEl }
+        mutedKeys: new Set() // socketId or playerToken muted by local user
+      };
+
+      function getRoomCode() {
+        return OnlineSession.roomId || AppState.roomCode || '';
+      }
+
+      function isOnlineRoomAvailable() {
+        return Boolean(socket && OnlineSession.connected && getRoomCode());
+      }
+
+      function isRemoteMuted(playerId, playerToken) {
+        if (playerId && state.mutedKeys.has(playerId)) return true;
+        if (playerToken && state.mutedKeys.has(playerToken)) return true;
+        return false;
+      }
+
+      function updateVoiceButtonsUI() {
+        const lobbyBtn = document.getElementById('lobbyVoiceMicBtn');
+        const lobbyIcon = document.getElementById('lobbyVoiceMicIcon');
+        const lobbyText = document.getElementById('lobbyVoiceMicText');
+
+        const gameBtn = document.getElementById('gameVoiceMicBtn');
+        const gameIcon = document.getElementById('gameVoiceMicIcon');
+        const gameDot = document.getElementById('gameVoiceMicStatusDot');
+
+        const onlineAvailable = isOnlineRoomAvailable();
+
+        if (lobbyBtn && lobbyIcon && lobbyText) {
+          if (!state.joined) {
+            lobbyIcon.textContent = '🎙️';
+            lobbyText.textContent = 'تفعيل الصوت';
+            lobbyBtn.className = 'inline-flex items-center gap-1.5 text-xs font-bold text-zinc-300 hover:text-white bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-700 transition cursor-pointer';
+          } else if (state.micMuted || state.listenOnly) {
+            lobbyIcon.textContent = '🔇';
+            lobbyText.textContent = state.listenOnly ? 'استماع فقط' : 'المايك مكتوم';
+            lobbyBtn.className = 'inline-flex items-center gap-1.5 text-xs font-bold text-red-300 hover:text-red-200 bg-red-950/60 px-3 py-1.5 rounded-xl border border-red-500/60 transition cursor-pointer';
+          } else {
+            lobbyIcon.textContent = '🎙️';
+            lobbyText.textContent = 'المايك مفتوح';
+            lobbyBtn.className = 'inline-flex items-center gap-1.5 text-xs font-black text-emerald-300 hover:text-emerald-200 bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/60 transition cursor-pointer';
+          }
+        }
+
+        if (gameBtn && gameIcon && gameDot) {
+          gameBtn.style.display = (OnlineSession.isOnlineMatch || onlineAvailable) ? 'flex' : 'none';
+          if (!state.joined) {
+            gameIcon.textContent = '🎙️';
+            gameDot.classList.add('hidden');
+            gameBtn.title = 'تفعيل الدردشة الصوتية';
+            gameBtn.className = 'relative w-8 h-8 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-sm transition cursor-pointer';
+          } else if (state.micMuted || state.listenOnly) {
+            gameIcon.textContent = '🔇';
+            gameDot.className = 'absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-zinc-950';
+            gameBtn.title = state.listenOnly ? 'وضع الاستماع فقط (اضغط لإعادة المحاولة)' : 'المايك مكتوم (اضغط لفتحه)';
+            gameBtn.className = 'relative w-8 h-8 rounded-xl bg-red-950/70 hover:bg-red-900/70 border border-red-500/60 flex items-center justify-center text-sm transition cursor-pointer';
+          } else {
+            gameIcon.textContent = '🎙️';
+            gameDot.className = 'absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-zinc-950 animate-pulse';
+            gameBtn.title = 'المايك مفتوح (اضغط لكتم صوتك)';
+            gameBtn.className = 'relative w-8 h-8 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/70 border border-emerald-400/70 flex items-center justify-center text-sm transition cursor-pointer';
+          }
+        }
+      }
+
+      async function joinVoice() {
+        if (!isOnlineRoomAvailable()) {
+          setActionBanner('⚠️ الدردشة الصوتية متاحة في الغرف الأونلاين فقط.', 'gold', true);
+          return;
+        }
+
+        if (!state.localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            state.localStream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+              },
+              video: false
+            });
+            state.listenOnly = false;
+            state.micMuted = false;
+          } catch (err) {
+            state.localStream = null;
+            state.listenOnly = true;
+            state.micMuted = true;
+            setActionBanner('🎧 لم يتم منح صلاحية المايك — تم تفعيل الاستماع فقط.', 'gold', true);
+          }
+        } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          state.localStream = null;
+          state.listenOnly = true;
+          state.micMuted = true;
+        }
+
+        state.joined = true;
+        updateVoiceButtonsUI();
+
+        socket.emit('voice_join', {
+          roomId: getRoomCode(),
+          code: getRoomCode(),
+          playerToken: OnlineSession.playerToken,
+          muted: state.micMuted
+        });
+
+        if (!state.listenOnly) {
+          setActionBanner('🎙️ تم تفعيل الدردشة الصوتية! اضغط على الزر لكتم المايك بأي وقت.', 'safe', true);
+        }
+      }
+
+      function toggleSelfMic() {
+        if (!state.joined) {
+          joinVoice();
+          return;
+        }
+
+        if (state.listenOnly) {
+          // Retry requesting mic permission
+          state.joined = false;
+          joinVoice();
+          return;
+        }
+
+        state.micMuted = !state.micMuted;
+        if (state.localStream) {
+          state.localStream.getAudioTracks().forEach((track) => {
+            track.enabled = !state.micMuted;
+          });
+        }
+
+        AudioEngine.blankClick();
+        updateVoiceButtonsUI();
+
+        if (isOnlineRoomAvailable()) {
+          socket.emit('voice_mute_state', {
+            roomId: getRoomCode(),
+            code: getRoomCode(),
+            playerToken: OnlineSession.playerToken,
+            muted: state.micMuted
+          });
+        }
+      }
+
+      function toggleMuteRemote(playerId, playerToken) {
+        const currentlyMuted = isRemoteMuted(playerId, playerToken);
+        if (currentlyMuted) {
+          if (playerId) state.mutedKeys.delete(playerId);
+          if (playerToken) state.mutedKeys.delete(playerToken);
+        } else {
+          if (playerId) state.mutedKeys.add(playerId);
+          if (playerToken) state.mutedKeys.add(playerToken);
+        }
+
+        Object.entries(state.peers).forEach(([peerSocketId, entry]) => {
+          if (entry && entry.audioEl) {
+            entry.audioEl.muted = isRemoteMuted(peerSocketId, entry.token);
+          }
+        });
+
+        AudioEngine.blankClick();
+        if (AppState.match.active) {
+          renderGameUI();
+        } else {
+          renderLobbySeats();
+        }
+      }
+
+      function createPeerConnection(targetSocketId, targetToken, isInitiator) {
+        if (state.peers[targetSocketId]) {
+          closePeer(targetSocketId);
+        }
+
+        const pc = new RTCPeerConnection(ICE_CONFIG);
+        const entry = { pc, token: targetToken || null, audioEl: null };
+        state.peers[targetSocketId] = entry;
+
+        if (state.localStream) {
+          state.localStream.getTracks().forEach((track) => {
+            pc.addTrack(track, state.localStream);
+          });
+        } else {
+          try {
+            pc.addTransceiver('audio', { direction: 'recvonly' });
+          } catch (e) {}
+        }
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate && isOnlineRoomAvailable()) {
+            socket.emit('voice_signal', {
+              roomId: getRoomCode(),
+              code: getRoomCode(),
+              playerToken: OnlineSession.playerToken,
+              targetSocketId,
+              signal: { type: 'candidate', candidate: event.candidate }
+            });
+          }
+        };
+
+        pc.ontrack = (event) => {
+          const remoteStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+          let audioEl = entry.audioEl;
+          if (!audioEl) {
+            audioEl = document.createElement('audio');
+            audioEl.autoplay = true;
+            audioEl.playsInline = true;
+            audioEl.setAttribute('playsinline', '');
+            audioEl.dataset.peerId = targetSocketId;
+            const container = document.getElementById('voiceAudioContainer');
+            if (container) container.appendChild(audioEl);
+            entry.audioEl = audioEl;
+          }
+          audioEl.srcObject = remoteStream;
+          audioEl.muted = isRemoteMuted(targetSocketId, entry.token);
+          audioEl.play().catch(() => {});
+        };
+
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+            closePeer(targetSocketId);
+          }
+        };
+
+        if (isInitiator) {
+          pc.createOffer()
+            .then((offer) => pc.setLocalDescription(offer))
+            .then(() => {
+              if (isOnlineRoomAvailable()) {
+                socket.emit('voice_signal', {
+                  roomId: getRoomCode(),
+                  code: getRoomCode(),
+                  playerToken: OnlineSession.playerToken,
+                  targetSocketId,
+                  signal: { type: 'offer', sdp: pc.localDescription }
+                });
+              }
+            })
+            .catch(() => {});
+        }
+
+        return entry;
+      }
+
+      function handleVoicePeers(peersList) {
+        if (!state.joined) return;
+        peersList.forEach((peer) => {
+          if (!peer.socketId || (socket && peer.socketId === socket.id)) return;
+          createPeerConnection(peer.socketId, peer.token, true);
+        });
+      }
+
+      function handlePeerJoined(peer) {
+        // Wait for the newly joined peer to send an offer to avoid SDP glare
+        if (!state.joined || !peer.socketId) return;
+        if (state.peers[peer.socketId]) {
+          state.peers[peer.socketId].token = peer.token || state.peers[peer.socketId].token;
+        }
+      }
+
+      async function handleSignal(fromSocketId, fromToken, signal) {
+        if (!state.joined) return;
+        try {
+          if (signal.type === 'offer') {
+            const entry = createPeerConnection(fromSocketId, fromToken, false);
+            await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            const answer = await entry.pc.createAnswer();
+            await entry.pc.setLocalDescription(answer);
+            if (isOnlineRoomAvailable()) {
+              socket.emit('voice_signal', {
+                roomId: getRoomCode(),
+                code: getRoomCode(),
+                playerToken: OnlineSession.playerToken,
+                targetSocketId: fromSocketId,
+                signal: { type: 'answer', sdp: entry.pc.localDescription }
+              });
+            }
+          } else if (signal.type === 'answer') {
+            const entry = state.peers[fromSocketId];
+            if (entry && entry.pc) {
+              await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            }
+          } else if (signal.type === 'candidate' && signal.candidate) {
+            const entry = state.peers[fromSocketId];
+            if (entry && entry.pc) {
+              await entry.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
+          }
+        } catch (e) {}
+      }
+
+      function closePeer(targetSocketId) {
+        const entry = state.peers[targetSocketId];
+        if (!entry) return;
+        try { entry.pc.close(); } catch (e) {}
+        if (entry.audioEl && entry.audioEl.parentNode) {
+          entry.audioEl.srcObject = null;
+          entry.audioEl.parentNode.removeChild(entry.audioEl);
+        }
+        delete state.peers[targetSocketId];
+      }
+
+      function handlePeerLeft(peerSocketId, peerToken) {
+        if (peerSocketId) closePeer(peerSocketId);
+        if (peerToken) {
+          Object.keys(state.peers).forEach((sid) => {
+            if (state.peers[sid] && state.peers[sid].token === peerToken) {
+              closePeer(sid);
+            }
+          });
+        }
+      }
+
+      function handleVoiceStatusUpdated(data) {
+        const updateList = (list) => {
+          if (!Array.isArray(list)) return;
+          list.forEach((p) => {
+            if (p.id === data.playerId || (data.playerToken && p.token === data.playerToken)) {
+              p.voiceActive = Boolean(data.voiceActive);
+              p.voiceMuted = Boolean(data.voiceMuted);
+            }
+          });
+        };
+        updateList(AppState.lobbySeats);
+        updateList(AppState.match.players);
+      }
+
+      function leaveVoice(notifyServer = true) {
+        if (notifyServer && state.joined && isOnlineRoomAvailable()) {
+          socket.emit('voice_leave', {
+            roomId: getRoomCode(),
+            code: getRoomCode(),
+            playerToken: OnlineSession.playerToken
+          });
+        }
+        Object.keys(state.peers).forEach(closePeer);
+        if (state.localStream) {
+          state.localStream.getTracks().forEach((t) => t.stop());
+          state.localStream = null;
+        }
+        state.joined = false;
+        state.micMuted = false;
+        state.listenOnly = false;
+        state.mutedKeys.clear();
+        updateVoiceButtonsUI();
+      }
+
+      return {
+        joinVoice,
+        toggleSelfMic,
+        toggleMuteRemote,
+        isRemoteMuted,
+        handleVoicePeers,
+        handlePeerJoined,
+        handlePeerLeft,
+        handleSignal,
+        handleVoiceStatusUpdated,
+        leaveVoice,
+        updateVoiceButtonsUI
+      };
+    })();
+
+    function toggleVoiceMicButton() {
+      VoiceManager.toggleSelfMic();
     }
 
     // Initialize safely on load
