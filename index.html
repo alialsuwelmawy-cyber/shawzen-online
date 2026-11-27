@@ -195,7 +195,7 @@
   <!-- Mobile App Container -->
   <div id="appFrame" class="phone-frame">
     <!-- Hidden container for WebRTC remote audio streams -->
-    <div id="voiceAudioContainer" class="hidden" aria-hidden="true"></div>
+    <div id="voiceAudioContainer" style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;" aria-hidden="true"></div>
 
     <!-- Player Hit Blood Vignette Overlay -->
     <div id="selfBloodVignette" class="hidden pointer-events-none absolute inset-0 z-30"
@@ -1186,6 +1186,10 @@
           const codeToJoin = OnlineSession.pendingJoinCode;
           OnlineSession.pendingJoinCode = null;
           emitJoinRoomToServer(codeToJoin);
+        }
+
+        if (typeof VoiceManager !== 'undefined' && VoiceManager.rejoinIfActive) {
+          setTimeout(() => VoiceManager.rejoinIfActive(), 800);
         }
       });
 
@@ -4825,7 +4829,8 @@
       const ICE_CONFIG = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun.cloudflare.com:3478' }
         ]
       };
 
@@ -4834,8 +4839,9 @@
         micMuted: false,
         listenOnly: false,
         localStream: null,
-        peers: {},          // socketId -> { pc, token, audioEl }
-        mutedKeys: new Set() // socketId or playerToken muted by local user
+        peers: {},            // socketId -> { pc, token, audioEl, pendingCandidates: [] }
+        mutedKeys: new Set(), // socketId or playerToken muted by local user
+        reconnectTimer: null
       };
 
       function getRoomCode() {
@@ -4850,6 +4856,14 @@
         if (playerId && state.mutedKeys.has(playerId)) return true;
         if (playerToken && state.mutedKeys.has(playerToken)) return true;
         return false;
+      }
+
+      function resumeAllRemoteAudio() {
+        Object.values(state.peers).forEach((entry) => {
+          if (entry && entry.audioEl && entry.audioEl.paused) {
+            entry.audioEl.play().catch(() => {});
+          }
+        });
       }
 
       function updateVoiceButtonsUI() {
@@ -4900,13 +4914,11 @@
         }
       }
 
-      async function joinVoice() {
-        if (!isOnlineRoomAvailable()) {
-          setActionBanner('⚠️ الدردشة الصوتية متاحة في الغرف الأونلاين فقط.', 'gold', true);
-          return;
-        }
+      async function ensureLocalMicStream() {
+        const hasLiveTrack = state.localStream && state.localStream.getAudioTracks().some(t => t.readyState === 'live');
+        if (hasLiveTrack) return true;
 
-        if (!state.localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
           try {
             state.localStream = await navigator.mediaDevices.getUserMedia({
               audio: {
@@ -4917,17 +4929,34 @@
               video: false
             });
             state.listenOnly = false;
-            state.micMuted = false;
+            state.localStream.getAudioTracks().forEach((track) => {
+              track.enabled = !state.micMuted;
+            });
+            return true;
           } catch (err) {
             state.localStream = null;
             state.listenOnly = true;
             state.micMuted = true;
-            setActionBanner('🎧 لم يتم منح صلاحية المايك — تم تفعيل الاستماع فقط.', 'gold', true);
+            return false;
           }
-        } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          state.localStream = null;
-          state.listenOnly = true;
-          state.micMuted = true;
+        }
+        state.localStream = null;
+        state.listenOnly = true;
+        state.micMuted = true;
+        return false;
+      }
+
+      async function joinVoice(isAutoRejoin = false) {
+        if (!isOnlineRoomAvailable()) {
+          if (!isAutoRejoin) {
+            setActionBanner('⚠️ الدردشة الصوتية متاحة في الغرف الأونلاين فقط.', 'gold', true);
+          }
+          return;
+        }
+
+        const gotMic = await ensureLocalMicStream();
+        if (!gotMic && !isAutoRejoin) {
+          setActionBanner('🎧 لم يتم منح صلاحية المايك — تم تفعيل الاستماع فقط.', 'gold', true);
         }
 
         state.joined = true;
@@ -4940,21 +4969,37 @@
           muted: state.micMuted
         });
 
-        if (!state.listenOnly) {
+        if (gotMic && !isAutoRejoin) {
           setActionBanner('🎙️ تم تفعيل الدردشة الصوتية! اضغط على الزر لكتم المايك بأي وقت.', 'safe', true);
         }
       }
 
+      function rejoinIfActive() {
+        if (!state.joined || !isOnlineRoomAvailable()) return;
+        Object.keys(state.peers).forEach(closePeer);
+        joinVoice(true);
+      }
+
+      function scheduleRecovery() {
+        if (!state.joined || state.reconnectTimer) return;
+        state.reconnectTimer = setTimeout(() => {
+          state.reconnectTimer = null;
+          if (state.joined && isOnlineRoomAvailable()) {
+            rejoinIfActive();
+          }
+        }, 1800);
+      }
+
       function toggleSelfMic() {
+        resumeAllRemoteAudio();
         if (!state.joined) {
-          joinVoice();
+          joinVoice(false);
           return;
         }
 
         if (state.listenOnly) {
-          // Retry requesting mic permission
           state.joined = false;
-          joinVoice();
+          joinVoice(false);
           return;
         }
 
@@ -4979,6 +5024,7 @@
       }
 
       function toggleMuteRemote(playerId, playerToken) {
+        resumeAllRemoteAudio();
         const currentlyMuted = isRemoteMuted(playerId, playerToken);
         if (currentlyMuted) {
           if (playerId) state.mutedKeys.delete(playerId);
@@ -5008,7 +5054,7 @@
         }
 
         const pc = new RTCPeerConnection(ICE_CONFIG);
-        const entry = { pc, token: targetToken || null, audioEl: null };
+        const entry = { pc, token: targetToken || null, audioEl: null, pendingCandidates: [] };
         state.peers[targetSocketId] = entry;
 
         if (state.localStream) {
@@ -5028,6 +5074,7 @@
               code: getRoomCode(),
               playerToken: OnlineSession.playerToken,
               targetSocketId,
+              targetToken: entry.token,
               signal: { type: 'candidate', candidate: event.candidate }
             });
           }
@@ -5051,8 +5098,18 @@
           audioEl.play().catch(() => {});
         };
 
+        pc.oniceconnectionstatechange = () => {
+          if (pc.iceConnectionState === 'failed') {
+            closePeer(targetSocketId);
+            scheduleRecovery();
+          }
+        };
+
         pc.onconnectionstatechange = () => {
-          if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+          if (pc.connectionState === 'failed') {
+            closePeer(targetSocketId);
+            scheduleRecovery();
+          } else if (pc.connectionState === 'closed') {
             closePeer(targetSocketId);
           }
         };
@@ -5067,6 +5124,7 @@
                   code: getRoomCode(),
                   playerToken: OnlineSession.playerToken,
                   targetSocketId,
+                  targetToken: entry.token,
                   signal: { type: 'offer', sdp: pc.localDescription }
                 });
               }
@@ -5075,6 +5133,16 @@
         }
 
         return entry;
+      }
+
+      async function flushPendingCandidates(entry) {
+        if (!entry || !entry.pc || !entry.pc.remoteDescription) return;
+        while (entry.pendingCandidates && entry.pendingCandidates.length > 0) {
+          const cand = entry.pendingCandidates.shift();
+          try {
+            await entry.pc.addIceCandidate(new RTCIceCandidate(cand));
+          } catch (e) {}
+        }
       }
 
       function handleVoicePeers(peersList) {
@@ -5086,7 +5154,6 @@
       }
 
       function handlePeerJoined(peer) {
-        // Wait for the newly joined peer to send an offer to avoid SDP glare
         if (!state.joined || !peer.socketId) return;
         if (state.peers[peer.socketId]) {
           state.peers[peer.socketId].token = peer.token || state.peers[peer.socketId].token;
@@ -5099,6 +5166,7 @@
           if (signal.type === 'offer') {
             const entry = createPeerConnection(fromSocketId, fromToken, false);
             await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            await flushPendingCandidates(entry);
             const answer = await entry.pc.createAnswer();
             await entry.pc.setLocalDescription(answer);
             if (isOnlineRoomAvailable()) {
@@ -5107,6 +5175,7 @@
                 code: getRoomCode(),
                 playerToken: OnlineSession.playerToken,
                 targetSocketId: fromSocketId,
+                targetToken: fromToken,
                 signal: { type: 'answer', sdp: entry.pc.localDescription }
               });
             }
@@ -5114,11 +5183,17 @@
             const entry = state.peers[fromSocketId];
             if (entry && entry.pc) {
               await entry.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+              await flushPendingCandidates(entry);
             }
           } else if (signal.type === 'candidate' && signal.candidate) {
-            const entry = state.peers[fromSocketId];
-            if (entry && entry.pc) {
+            let entry = state.peers[fromSocketId];
+            if (!entry) {
+              entry = createPeerConnection(fromSocketId, fromToken, false);
+            }
+            if (entry.pc && entry.pc.remoteDescription) {
               await entry.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            } else {
+              entry.pendingCandidates.push(signal.candidate);
             }
           }
         } catch (e) {}
@@ -5161,6 +5236,10 @@
       }
 
       function leaveVoice(notifyServer = true) {
+        if (state.reconnectTimer) {
+          clearTimeout(state.reconnectTimer);
+          state.reconnectTimer = null;
+        }
         if (notifyServer && state.joined && isOnlineRoomAvailable()) {
           socket.emit('voice_leave', {
             roomId: getRoomCode(),
@@ -5180,8 +5259,11 @@
         updateVoiceButtonsUI();
       }
 
+      document.addEventListener('pointerdown', resumeAllRemoteAudio, { passive: true });
+
       return {
         joinVoice,
+        rejoinIfActive,
         toggleSelfMic,
         toggleMuteRemote,
         isRemoteMuted,
